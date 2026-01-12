@@ -1,0 +1,125 @@
+category,method,schema_valid,validation_msg,timestamp
+configuration_management,PUT,True,Schema valid,2025-11-26T15:51:42.625249
+aiml_model_storage,POST,True,No schema defined,2025-11-26T15:51:42.625343
+aiml_model_storage,DELETE,True,No body required,2025-11-26T15:51:42.625387
+performance_management,GET,True,No body required,2025-11-26T15:51:42.625434
+aiml_model_registration,PUT,False,Schema error: 'modelName' is a required property,2025-11-26T15:51:42.626261
+configuration_management,GET,True,No body required,2025-11-26T15:51:42.626308
+network_information,GET,True,No body required,2025-11-26T15:51:42.626347
+aiml_model_storage,DELETE,True,No body required,2025-11-26T15:51:42.626389
+data_discovery,GET,True,No body required,2025-11-26T15:51:42.626428
+aiml_performance_monitoring,POST,True,No schema defined,2025-11-26T15:51:42.626467
+data_subscription,POST,True,Schema valid,2025-11-26T15:51:42.627132
+performance_management,GET,True,No body required,2025-11-26T15:51:42.627183
+aiml_model_training,POST,True,Schema valid,2025-11-26T15:51:42.627843
+o2_infrastructure_management,GET,True,No body required,2025-11-26T15:51:42.627888
+data_discovery,POST,True,No schema defined,2025-11-26T15:51:42.627927
+network_information,GET,True,No body required,2025-11-26T15:51:42.627966
+aiml_model_inference,GET,True,No body required,2025-11-26T15:51:42.628005
+fault_management,GET,True,No body required,2025-11-26T15:51:42.628042
+service_discovery,GET,True,No body required,2025-11-26T15:51:42.628080
+service_discovery,GET,True,No body required,2025-11-26T15:51:42.628117
+aiml_model_discovery,GET,True,No body required,2025-11-26T15:51:42.628153
+aiml_model_storage,DELETE,True,No body required,2025-11-26T15:51:42.628190
+aiml_model_inference,POST,True,No schema defined,2025-11-26T15:51:42.628228
+bootstrap,GET,True,No body required,2025-11-26T15:51:42.628268
+o2_deployment_management,GET,True,No body required,2025-11-26T15:51:42.628305
+aiml_performance_monitoring,DELETE,True,No body required,2025-11-26T15:51:42.628343
+data_request,POST,True,No schema defined,2025-11-26T15:51:42.628382
+aiml_model_registration,POST,True,Schema valid,2025-11-26T15:51:42.629153
+rapp_registration,POST,True,Schema valid,2025-11-26T15:51:42.629807
+fault_management,GET,True,No body required,2025-11-26T15:51:42.629851
+aiml_training_capability,POST,True,No schema defined,2025-11-26T15:51:42.629891
+data_request,POST,True,No schema defined,2025-11-26T15:51:42.629930
+aiml_model_training,GET,True,No body required,2025-11-26T15:51:42.629967
+service_registration,POST,True,Schema valid,2025-11-26T15:51:42.631324
+data_offer,DELETE,True,No body required,2025-11-26T15:51:42.631385
+a1_enrichment_information,DELETE,True,No body required,2025-11-26T15:51:42.631424
+data_offer,POST,True,Schema valid,2025-11-26T15:51:42.632171
+data_registration,DELETE,True,No body required,2025-11-26T15:51:42.632213
+performance_management,GET,True,No body required,2025-11-26T15:51:42.632250
+aiml_performance_monitoring,DELETE,True,No body required,2025-11-26T15:51:42.632286
+aiml_model_inference,GET,True,No body required,2025-11-26T15:51:42.632322
+aiml_model_discovery,GET,True,No body required,2025-11-26T15:51:42.632360
+data_request,POST,True,No schema defined,2025-11-26T15:51:42.632395
+rapp_registration,POST,True,Schema valid,2025-11-26T15:51:42.633003
+rapp_registration,POST,True,Schema valid,2025-11-26T15:51:42.633627
+a1_enrichment_information,DELETE,True,No body required,2025-11-26T15:51:42.633667
+aiml_model_registration,PUT,False,Schema error: 'modelName' is a required property,2025-11-26T15:51:42.634387
+data_registration,DELETE,True,No body required,2025-11-26T15:51:42.634429
+service_discovery,POST,True,No schema defined,2025-11-26T15:51:42.634465
+data_offer,POST,True,Schema valid,2025-11-26T15:51:42.635226
+bootstrap,GET,True,No body required,2025-11-26T15:51:42.635271
+configuration_management,PUT,True,Schema valid,2025-11-26T15:51:42.636048
+service_registration,PUT,True,Schema valid,2025-11-26T15:51:42.637208
+o2_infrastructure_management,GET,True,No body required,2025-11-26T15:51:42.637250
+performance_management,GET,True,No body required,2025-11-26T15:51:42.637287
+aiml_performance_monitoring,POST,True,No schema defined,2025-11-26T15:51:42.637322
+o2_deployment_management,GET,True,No body required,2025-11-26T15:51:42.637357
+data_offer,DELETE,True,No body required,2025-11-26T15:51:42.637393
+aiml_model_registration,DELETE,True,No body required,2025-11-26T15:51:42.637429
+aiml_model_training,GET,True,No body required,2025-11-26T15:51:42.637465
+service_discovery,GET,True,No body required,2025-11-26T15:51:42.637511
+performance_management,GET,True,No body required,2025-11-26T15:51:42.637552
+fault_management,GET,True,No body required,2025-11-26T15:51:42.637592
+data_request,POST,True,No schema defined,2025-11-26T15:51:42.637630
+o2_infrastructure_management,GET,True,No body required,2025-11-26T15:51:42.637668
+rapp_registration,PUT,False,Schema error: 'rAppName' is a required property,2025-11-26T15:51:42.638316
+fault_management,PATCH,True,No schema defined,2025-11-26T15:51:42.638360
+data_registration,PUT,False,Schema error: 'dmeTypeId' is a required property,2025-11-26T15:51:42.639516
+service_registration,PUT,True,Schema valid,2025-11-26T15:51:42.640703
+bootstrap,GET,True,No body required,2025-11-26T15:51:42.640785
+o2_infrastructure_management,GET,True,No body required,2025-11-26T15:51:42.640829
+service_registration,PUT,True,Schema valid,2025-11-26T15:51:42.642174
+service_registration,PUT,True,Schema valid,2025-11-26T15:51:42.643549
+a1_policy_management,GET,True,No body required,2025-11-26T15:51:42.643605
+aiml_model_training,GET,True,No body required,2025-11-26T15:51:42.643645
+network_information,GET,True,No body required,2025-11-26T15:51:42.643683
+fault_management,GET,True,No body required,2025-11-26T15:51:42.643720
+service_registration,DELETE,True,No body required,2025-11-26T15:51:42.643759
+aiml_model_inference,GET,True,No body required,2025-11-26T15:51:42.643796
+service_discovery,GET,True,No body required,2025-11-26T15:51:42.643832
+aiml_model_registration,PUT,False,Schema error: 'modelName' is a required property,2025-11-26T15:51:42.644616
+bootstrap,GET,True,No body required,2025-11-26T15:51:42.644661
+data_registration,DELETE,True,No body required,2025-11-26T15:51:42.644699
+data_subscription,PATCH,False,Schema error: 'dmeTypeId' is a required property,2025-11-26T15:51:42.645335
+service_registration,PUT,True,Schema valid,2025-11-26T15:51:42.646566
+rapp_registration,POST,True,Schema valid,2025-11-26T15:51:42.647202
+aiml_model_training,GET,True,No body required,2025-11-26T15:51:42.647245
+aiml_model_discovery,GET,True,No body required,2025-11-26T15:51:42.647283
+data_subscription,POST,True,Schema valid,2025-11-26T15:51:42.647903
+fault_management,GET,True,No body required,2025-11-26T15:51:42.647950
+fault_management,GET,True,No body required,2025-11-26T15:51:42.647989
+data_request,POST,True,No schema defined,2025-11-26T15:51:42.648025
+aiml_model_inference,POST,True,No schema defined,2025-11-26T15:51:42.648062
+data_request,GET,True,No body required,2025-11-26T15:51:42.648101
+fault_management,PATCH,True,No schema defined,2025-11-26T15:51:42.648138
+data_registration,DELETE,True,No body required,2025-11-26T15:51:42.648175
+o2_infrastructure_management,GET,True,No body required,2025-11-26T15:51:42.648211
+o2_deployment_management,GET,True,No body required,2025-11-26T15:51:42.648247
+a1_policy_management,DELETE,True,No body required,2025-11-26T15:51:42.648283
+configuration_management,GET,True,No body required,2025-11-26T15:51:42.648995
+fault_management,GET,True,No body required,2025-11-26T15:51:42.649100
+a1_enrichment_information,POST,True,No schema defined,2025-11-26T15:51:42.649160
+data_request,POST,True,No schema defined,2025-11-26T15:51:42.649229
+a1_enrichment_information,DELETE,True,No body required,2025-11-26T15:51:42.649324
+performance_management,GET,True,No body required,2025-11-26T15:51:42.649377
+aiml_model_registration,POST,True,Schema valid,2025-11-26T15:51:42.650130
+aiml_model_inference,POST,True,No schema defined,2025-11-26T15:51:42.650196
+rapp_registration,POST,True,Schema valid,2025-11-26T15:51:42.650832
+network_information,GET,True,No body required,2025-11-26T15:51:42.650891
+fault_management,PATCH,True,No schema defined,2025-11-26T15:51:42.650942
+data_discovery,GET,True,No body required,2025-11-26T15:51:42.650991
+service_registration,PUT,True,Schema valid,2025-11-26T15:51:42.652173
+aiml_model_registration,DELETE,True,No body required,2025-11-26T15:51:42.652230
+data_subscription,DELETE,True,No body required,2025-11-26T15:51:42.652278
+o2_deployment_management,GET,True,No body required,2025-11-26T15:51:42.652323
+network_information,GET,True,No body required,2025-11-26T15:51:42.652368
+performance_management,GET,True,No body required,2025-11-26T15:51:42.652413
+network_information,GET,True,No body required,2025-11-26T15:51:42.652457
+bootstrap,GET,True,No body required,2025-11-26T15:51:42.652502
+performance_management,GET,True,No body required,2025-11-26T15:51:42.652547
+aiml_model_training,POST,True,Schema valid,2025-11-26T15:51:42.653155
+aiml_model_storage,POST,True,No schema defined,2025-11-26T15:51:42.653216
+aiml_model_training,DELETE,True,No body required,2025-11-26T15:51:42.653267
+bootstrap,GET,True,No body required,2025-11-26T15:51:42.653313

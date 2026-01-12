@@ -1,0 +1,887 @@
+# r1_rest_apis.yaml
+# O-RAN R1 REST API definitions - CAPIF/3GPP TS 29.222 Compliant
+# Aligned with O-RAN.WG2.TS.R1GAP-R004-v12.00 and 3GPP CAPIF (TS 29.222)
+# =========================================================================
+#
+# URI Pattern Reference (per 3GPP TS 29.222):
+#   - Service Publishing:    /capif-publish/v1/{apfId}/service-apis
+#   - Service Discovery:     /capif-discover/v1/allServiceAPIs
+#   - API Invoker Mgmt:      /capif-api-invoker-management/v1/onboardedInvokers
+#   - Security:              /capif-security/v1/trustedInvokers/{apiInvokerId}
+#   - Events:                /capif-events/v1/{subscriberId}/subscriptions
+#   - Provider Mgmt:         /api-provider-management/v1/registrations
+#
+# R1-Specific Services follow O-RAN.WG2.R1AP patterns
+# =========================================================================
+
+# SECTION 5.1: Service Management and Exposure (CAPIF-aligned)
+bootstrap:
+  - name: "Get bootstrap information"
+    uri: "{apiRoot}/r1-bootstrap/v1/bootstrap-info"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+    example_response:
+      apiRoot: "https://smo.example.com"
+      serviceEndpoints:
+        capifPublish: "/capif-publish/v1"
+        capifDiscover: "/capif-discover/v1"
+        a1PolicyManagement: "/r1-a1-policy-management/v1"
+        dataManagement: "/r1-data-management/v1"
+
+service_registration:
+  - name: "Register API service"
+    uri: "{apiRoot}/capif-publish/v1/{apfId}/service-apis"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+    example_payload:
+      apiName: "rApp-TrafficOptimization"
+      aefProfiles:
+        - aefId: "aef-001"
+          versions:
+            - apiVersion: "v1"
+              resources:
+                - resourceName: "traffic-data"
+                  commType: "REQUEST_RESPONSE"
+                  uri: "/traffic/data"
+                  operations: ["GET", "POST"]
+          protocol: "HTTP_1_1"
+          dataFormat: "JSON"
+          securityMethods: ["OAUTH"]
+          interfaceDescriptions:
+            - ipv4Addr: "192.168.1.100"
+              port: 8443
+      description: "Traffic optimization rApp service API"
+      supportedFeatures: "0"
+
+  - name: "Get API service details"
+    uri: "{apiRoot}/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Update API service"
+    uri: "{apiRoot}/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+    method: "PUT"
+    response_code: 200
+    example_payload:
+      apiName: "rApp-TrafficOptimization"
+      aefProfiles:
+        - aefId: "aef-001"
+          versions:
+            - apiVersion: "v2"
+              resources:
+                - resourceName: "traffic-data"
+                  commType: "REQUEST_RESPONSE"
+                  uri: "/traffic/data"
+                  operations: ["GET", "POST", "DELETE"]
+          protocol: "HTTP_2"
+          dataFormat: "JSON"
+          securityMethods: ["OAUTH"]
+
+  - name: "Delete API service"
+    uri: "{apiRoot}/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+service_discovery:
+  - name: "Discover all service APIs"
+    uri: "{apiRoot}/capif-discover/v1/allServiceAPIs"
+    method: "GET"
+    response_code: 200
+    query_params:
+      - name: "api-invoker-id"
+        required: true
+      - name: "api-name"
+        required: false
+      - name: "api-version"
+        required: false
+      - name: "aef-id"
+        required: false
+    example_payload: null
+
+  - name: "Subscribe to service availability"
+    uri: "{apiRoot}/capif-events/v1/{subscriberId}/subscriptions"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/capif-events/v1/{subscriberId}/subscriptions/{subscriptionId}"
+    example_payload:
+      events:
+        - "SERVICE_API_AVAILABLE"
+        - "SERVICE_API_UNAVAILABLE"
+      notificationDestination: "http://rapp.example.com/capif-notifications"
+      eventFilters:
+        - apiIds: ["api-001", "api-002"]
+      supportedFeatures: "0"
+
+  - name: "Unsubscribe from service availability"
+    uri: "{apiRoot}/capif-events/v1/{subscriberId}/subscriptions/{subscriptionId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+# SECTION 5.2: Data Management and Exposure (R1-DME aligned)
+data_registration:
+  - name: "Register DME type production capability"
+    uri: "{apiRoot}/r1-data-management/v1/data-producer-registrations"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-data-management/v1/data-producer-registrations/{registrationId}"
+    example_payload:
+      infoTypeId: "oran-dmf:ue-metrics-v1"
+      infoProducerId: "producer-001"
+      infoJobCallbackUrl: "http://rapp.example.com/info-job-callback"
+      supportedDeliveryMethods: ["PUSH", "PULL", "STREAMING"]
+      dataReportingPeriod: 300
+      supportedFeatures: "0"
+
+  - name: "Query DME type registration"
+    uri: "{apiRoot}/r1-data-management/v1/data-producer-registrations/{registrationId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Update DME type registration"
+    uri: "{apiRoot}/r1-data-management/v1/data-producer-registrations/{registrationId}"
+    method: "PUT"
+    response_code: 200
+    example_payload:
+      infoTypeId: "oran-dmf:ue-metrics-v1"
+      infoProducerId: "producer-001"
+      supportedDeliveryMethods: ["PUSH", "STREAMING"]
+      dataReportingPeriod: 600
+
+  - name: "Deregister DME type"
+    uri: "{apiRoot}/r1-data-management/v1/data-producer-registrations/{registrationId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+data_discovery:
+  - name: "Discover DME types"
+    uri: "{apiRoot}/r1-data-management/v1/info-types"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Get DME type information"
+    uri: "{apiRoot}/r1-data-management/v1/info-types/{infoTypeId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Subscribe to DME type changes"
+    uri: "{apiRoot}/r1-data-management/v1/info-type-subscriptions"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-data-management/v1/info-type-subscriptions/{subscriptionId}"
+    example_payload:
+      callbackReference: "http://rapp.example.com/dme-notifications"
+      infoTypeIds: ["oran-dmf:ue-metrics-v1"]
+      supportedFeatures: "0"
+
+data_request:
+  - name: "Request data"
+    uri: "{apiRoot}/r1-data-management/v1/info-jobs"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}"
+    example_payload:
+      infoTypeId: "oran-dmf:kpi-data-v1"
+      infoJobData:
+        timeInterval:
+          start: "2024-01-01T00:00:00Z"
+          end: "2024-01-01T23:59:59Z"
+        filterCriteria:
+          cellIdList: ["NRCell-1", "NRCell-2"]
+      targetUri: "http://rapp.example.com/data-delivery"
+      owner: "rapp-001"
+      supportedFeatures: "0"
+
+  - name: "Query data request status"
+    uri: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}/status"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+data_subscription:
+  - name: "Subscribe to data"
+    uri: "{apiRoot}/r1-data-management/v1/info-jobs"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}"
+    example_payload:
+      infoTypeId: "oran-dmf:kpi-data-v1"
+      infoJobData:
+        filterCriteria:
+          cellIdList: ["NRCell-1", "NRCell-2"]
+          measurementTypes: ["rsrp_dbm", "prb_usage_dl"]
+        deliveryMethod: "PUSH"
+        reportingPeriod: 300
+      targetUri: "http://rapp.example.com/kpi-stream"
+      owner: "rapp-001"
+
+  - name: "Get data job status"
+    uri: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Update data subscription"
+    uri: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}"
+    method: "PUT"
+    response_code: 200
+    example_payload:
+      infoTypeId: "oran-dmf:kpi-data-v1"
+      infoJobData:
+        reportingPeriod: 600
+      targetUri: "http://rapp.example.com/kpi-stream"
+      owner: "rapp-001"
+
+  - name: "Unsubscribe from data"
+    uri: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+data_offer:
+  - name: "Create data offer"
+    uri: "{apiRoot}/r1-data-management/v1/data-offers"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-data-management/v1/data-offers/{offerId}"
+    example_payload:
+      infoTypeId: "oran-dmf:historical-ue-metrics"
+      dataCharacteristics:
+        timeInterval:
+          start: "2024-01-01T00:00:00Z"
+          end: "2024-01-31T23:59:59Z"
+        granularityPeriod: 300
+      supportedDeliveryMethod: "PULL"
+      offerExpirationTime: "2024-12-31T23:59:59Z"
+
+  - name: "Get data offer"
+    uri: "{apiRoot}/r1-data-management/v1/data-offers/{offerId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Terminate data offer"
+    uri: "{apiRoot}/r1-data-management/v1/data-offers/{offerId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+# SECTION 5.3: A1-Related Services (R1-AP v5.0 compliant)
+a1_policy_management:
+  - name: "Get A1 policy types"
+    uri: "{apiRoot}/r1-a1-policy-management/v1/policytypes"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Get A1 policy type schema"
+    uri: "{apiRoot}/r1-a1-policy-management/v1/policytypes/{policyTypeId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Create A1 policy"
+    uri: "{apiRoot}/r1-a1-policy-management/v1/policies"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-a1-policy-management/v1/policies/{policyId}"
+    example_payload:
+      policyId: "policy-001"
+      policyTypeId: "ORAN_QoSTarget_1.0.0"
+      nearRtRicId: "ric-001"
+      serviceAreaId: "sa-001"
+      policyData:
+        scope:
+          cellIdList: ["cell-1", "cell-2"]
+          sliceId:
+            sst: 1
+            sd: "000001"
+        qosObjectives:
+          guaranteedBitRate: 10000
+          packetDelayBudget: 20
+      transient: false
+      statusNotificationUri: "http://rapp.example.com/policy-status"
+
+  - name: "Get A1 policy"
+    uri: "{apiRoot}/r1-a1-policy-management/v1/policies/{policyId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Update A1 policy"
+    uri: "{apiRoot}/r1-a1-policy-management/v1/policies/{policyId}"
+    method: "PUT"
+    response_code: 200
+    example_payload:
+      policyId: "policy-001"
+      policyTypeId: "ORAN_QoSTarget_1.0.0"
+      nearRtRicId: "ric-001"
+      policyData:
+        qosObjectives:
+          guaranteedBitRate: 15000
+          packetDelayBudget: 15
+
+  - name: "Delete A1 policy"
+    uri: "{apiRoot}/r1-a1-policy-management/v1/policies/{policyId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+  - name: "Query A1 policy status"
+    uri: "{apiRoot}/r1-a1-policy-management/v1/policies/{policyId}/status"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Get Near-RT RICs"
+    uri: "{apiRoot}/r1-a1-policy-management/v1/rics"
+    method: "GET"
+    response_code: 200
+    query_params:
+      - name: "policytype_id"
+        required: false
+    example_payload: null
+
+a1_enrichment_information:
+  - name: "Register EI type"
+    uri: "{apiRoot}/r1-a1-ei/v1/eitypes"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-a1-ei/v1/eitypes/{eiTypeId}"
+    example_payload:
+      eiTypeId: "ue-location-data"
+      eiJobParametersSchema:
+        type: "object"
+        properties:
+          ueIdList:
+            type: "array"
+            items:
+              type: "string"
+
+  - name: "Get EI types"
+    uri: "{apiRoot}/r1-a1-ei/v1/eitypes"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Deregister EI type"
+    uri: "{apiRoot}/r1-a1-ei/v1/eitypes/{eiTypeId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+  - name: "Create EI job"
+    uri: "{apiRoot}/r1-a1-ei/v1/eijobs"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-a1-ei/v1/eijobs/{eiJobId}"
+    example_payload:
+      eiTypeId: "ue-location-data"
+      jobDefinition:
+        ueIdList: ["imsi-310150123456789"]
+      targetUri: "http://rapp.example.com/ei-data"
+      owner: "rapp-001"
+
+# SECTION 5.4: RAN OAM-Related Services (O1/3GPP TS 28.532 aligned)
+network_information:
+  - name: "Query cell information"
+    uri: "{apiRoot}/r1-oam/v1/managedElements"
+    method: "GET"
+    response_code: 200
+    query_params:
+      - name: "filter"
+        required: false
+      - name: "fields"
+        required: false
+    example_payload: null
+
+  - name: "Get cell details"
+    uri: "{apiRoot}/r1-oam/v1/managedElements/{managedElementId}/nrCellDu/{cellId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Get gNB-DU details"
+    uri: "{apiRoot}/r1-oam/v1/managedElements/{managedElementId}/gnbDuFunction/{gnbDuId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+fault_management:
+  - name: "Query alarms"
+    uri: "{apiRoot}/r1-oam/v1/alarmList/alarmRecords"
+    method: "GET"
+    response_code: 200
+    query_params:
+      - name: "filter"
+        required: false
+      - name: "alarmAckState"
+        required: false
+    example_payload: null
+
+  - name: "Get alarm details"
+    uri: "{apiRoot}/r1-oam/v1/alarmList/alarmRecords/{alarmId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Change alarm acknowledgement"
+    uri: "{apiRoot}/r1-oam/v1/alarmList/alarmRecords/{alarmId}"
+    method: "PATCH"
+    response_code: 200
+    example_payload:
+      ackState: "ACKNOWLEDGED"
+      ackUserId: "admin"
+      ackSystemId: "smo-001"
+
+  - name: "Subscribe to alarm notifications"
+    uri: "{apiRoot}/r1-oam/v1/alarmList/subscriptions"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-oam/v1/alarmList/subscriptions/{subscriptionId}"
+    example_payload:
+      callbackReference: "http://rapp.example.com/alarm-notifications"
+      filter:
+        perceivedSeverity: ["CRITICAL", "MAJOR"]
+      supportedFeatures: "0"
+
+performance_management:
+  - name: "Query performance data"
+    uri: "{apiRoot}/r1-oam/v1/measDataCollection"
+    method: "GET"
+    response_code: 200
+    query_params:
+      - name: "filter"
+        required: false
+      - name: "granularityPeriod"
+        required: false
+    example_payload: null
+
+  - name: "Get PM job"
+    uri: "{apiRoot}/r1-oam/v1/pmJobs/{pmJobId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Create PM job"
+    uri: "{apiRoot}/r1-oam/v1/pmJobs"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-oam/v1/pmJobs/{pmJobId}"
+    example_payload:
+      granularityPeriod: 900
+      reportingPeriod: 900
+      measurementTypes:
+        - "DRB.UEThpDl"
+        - "DRB.UEThpUl"
+        - "RRU.PrbUsedDl"
+      objectInstances:
+        - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=cell-1"
+      fileBasedGp: 900
+      streamTarget: "http://rapp.example.com/pm-data"
+
+configuration_management:
+  - name: "Get configuration schemas"
+    uri: "{apiRoot}/r1-oam/v1/schemas"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Read configuration"
+    uri: "{apiRoot}/r1-oam/v1/managedElements/{managedElementId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Write configuration"
+    uri: "{apiRoot}/r1-oam/v1/managedElements/{managedElementId}"
+    method: "PUT"
+    response_code: 200
+    example_payload:
+      id: "gNB-001"
+      attributes:
+        userLabel: "gNodeB Site 1"
+      gnbDuFunction:
+        - id: "du-1"
+          attributes:
+            gnbDuId: 1
+          nrCellDu:
+            - id: "cell-1"
+              attributes:
+                cellLocalId: 1
+                nRPCI: 100
+                nRTAC: 1
+                pMax: 23
+
+  - name: "Patch configuration"
+    uri: "{apiRoot}/r1-oam/v1/managedElements/{managedElementId}"
+    method: "PATCH"
+    response_code: 200
+    example_payload:
+      gnbDuFunction:
+        - id: "du-1"
+          nrCellDu:
+            - id: "cell-1"
+              attributes:
+                pMax: 20
+
+# SECTION 5.5: O2-Related Services (O-RAN.WG6.O2 aligned)
+o2_infrastructure_management:
+  - name: "Query resource pools"
+    uri: "{apiRoot}/o2ims-infrastructureInventory/v1/resourcePools"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Get resource pool details"
+    uri: "{apiRoot}/o2ims-infrastructureInventory/v1/resourcePools/{resourcePoolId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Query resources"
+    uri: "{apiRoot}/o2ims-infrastructureInventory/v1/resourcePools/{resourcePoolId}/resources"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Query infrastructure monitoring"
+    uri: "{apiRoot}/o2ims-infrastructureMonitoring/v1/alarmSubscriptions"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Subscribe to infrastructure alarms"
+    uri: "{apiRoot}/o2ims-infrastructureMonitoring/v1/alarmSubscriptions"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/o2ims-infrastructureMonitoring/v1/alarmSubscriptions/{subscriptionId}"
+    example_payload:
+      callback: "http://rapp.example.com/o2-alarm-notifications"
+      filter:
+        resourcePoolId: "pool-001"
+
+o2_deployment_management:
+  - name: "Get deployment managers"
+    uri: "{apiRoot}/o2dms/v1/deploymentManagers"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Query deployment monitoring"
+    uri: "{apiRoot}/o2dms/v1/deploymentManagers/{deploymentManagerId}/nfDeployments"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Create NF deployment"
+    uri: "{apiRoot}/o2dms/v1/deploymentManagers/{deploymentManagerId}/nfDeployments"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/o2dms/v1/deploymentManagers/{deploymentManagerId}/nfDeployments/{nfDeploymentId}"
+    example_payload:
+      name: "rapp-deployment-001"
+      description: "Traffic optimization rApp deployment"
+      nfDeploymentDescriptorId: "desc-001"
+      parameterOverrides:
+        replicas: 2
+        resourceRequests:
+          cpu: "500m"
+          memory: "512Mi"
+
+# SECTION 5.6: AI/ML Workflow Services (R1-AIML aligned)
+aiml_model_registration:
+  - name: "Register AI/ML model"
+    uri: "{apiRoot}/r1-aiml/v1/mlModels"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-aiml/v1/mlModels/{modelId}"
+    example_payload:
+      modelName: "TrafficPredictor"
+      modelVersion: "1.0.0"
+      modelDescription: "Traffic prediction model for cell load forecasting"
+      modelFramework: "PYTORCH"
+      modelFormat: "ONNX"
+      modelUri: "http://model-repo.example.com/models/traffic-predictor-v1"
+      inputSchema:
+        type: "object"
+        properties:
+          ueMetrics:
+            type: "array"
+            items:
+              type: "number"
+      outputSchema:
+        type: "object"
+        properties:
+          prediction:
+            type: "number"
+      supportedFeatures: "0"
+
+  - name: "Get AI/ML model details"
+    uri: "{apiRoot}/r1-aiml/v1/mlModels/{modelId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Update model registration"
+    uri: "{apiRoot}/r1-aiml/v1/mlModels/{modelId}"
+    method: "PUT"
+    response_code: 200
+    example_payload:
+      modelName: "TrafficPredictor"
+      modelVersion: "2.0.0"
+      modelUri: "http://model-repo.example.com/models/traffic-predictor-v2"
+
+  - name: "Deregister AI/ML model"
+    uri: "{apiRoot}/r1-aiml/v1/mlModels/{modelId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+aiml_model_storage:
+  - name: "Store AI/ML model artifact"
+    uri: "{apiRoot}/r1-aiml/v1/mlModelArtifacts"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-aiml/v1/mlModelArtifacts/{artifactId}"
+    example_payload:
+      modelId: "model-001"
+      artifactName: "traffic-predictor-weights"
+      artifactFormat: "ONNX"
+      artifactSize: 52428800
+      checksum: "sha256:abc123..."
+
+  - name: "Get model artifact"
+    uri: "{apiRoot}/r1-aiml/v1/mlModelArtifacts/{artifactId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Delete AI/ML model artifact"
+    uri: "{apiRoot}/r1-aiml/v1/mlModelArtifacts/{artifactId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+aiml_model_discovery:
+  - name: "Discover AI/ML models"
+    uri: "{apiRoot}/r1-aiml/v1/mlModels"
+    method: "GET"
+    response_code: 200
+    query_params:
+      - name: "modelFramework"
+        required: false
+      - name: "modelName"
+        required: false
+    example_payload: null
+
+aiml_model_training:
+  - name: "Request model training"
+    uri: "{apiRoot}/r1-aiml/v1/mlTrainingJobs"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-aiml/v1/mlTrainingJobs/{trainingJobId}"
+    example_payload:
+      trainingJobName: "training-job-001"
+      modelId: "model-001"
+      trainingDataUri: "http://data-lake.example.com/datasets/traffic-data-v1"
+      hyperparameters:
+        learningRate: 0.001
+        batchSize: 32
+        epochs: 100
+        optimizer: "adam"
+      resourceRequirements:
+        gpuCount: 4
+        cpuCores: 32
+        memoryGb: 64
+      callbackUri: "http://rapp.example.com/training-status"
+
+  - name: "Query training job status"
+    uri: "{apiRoot}/r1-aiml/v1/mlTrainingJobs/{trainingJobId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Cancel model training"
+    uri: "{apiRoot}/r1-aiml/v1/mlTrainingJobs/{trainingJobId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+aiml_performance_monitoring:
+  - name: "Subscribe to model performance"
+    uri: "{apiRoot}/r1-aiml/v1/mlPerformanceSubscriptions"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-aiml/v1/mlPerformanceSubscriptions/{subscriptionId}"
+    example_payload:
+      modelId: "model-001"
+      performanceMetrics:
+        - "accuracy"
+        - "latency"
+        - "inferenceCount"
+        - "errorRate"
+      reportingPeriod: 300
+      notificationUri: "http://rapp.example.com/model-perf-notifications"
+
+  - name: "Get performance subscription"
+    uri: "{apiRoot}/r1-aiml/v1/mlPerformanceSubscriptions/{subscriptionId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Unsubscribe from performance"
+    uri: "{apiRoot}/r1-aiml/v1/mlPerformanceSubscriptions/{subscriptionId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+aiml_model_inference:
+  - name: "Query inference capabilities"
+    uri: "{apiRoot}/r1-aiml/v1/mlInferenceCapabilities"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Request model inference"
+    uri: "{apiRoot}/r1-aiml/v1/mlInferenceJobs"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-aiml/v1/mlInferenceJobs/{inferenceJobId}"
+    example_payload:
+      modelId: "model-001"
+      inputData:
+        ueMetrics: [1.2, 3.4, 5.6]
+        cellMetrics:
+          prbUtilization: 75
+          activeUsers: 150
+      inferenceMode: "SYNC"
+      timeout: 5000
+
+  - name: "Get inference result"
+    uri: "{apiRoot}/r1-aiml/v1/mlInferenceJobs/{inferenceJobId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+aiml_training_capability:
+  - name: "Register training capability"
+    uri: "{apiRoot}/r1-aiml/v1/mlTrainingCapabilities"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-aiml/v1/mlTrainingCapabilities/{capabilityId}"
+    example_payload:
+      providerId: "rapp-trainer-001"
+      supportedFrameworks:
+        - framework: "PYTORCH"
+          versions: ["1.13", "2.0", "2.1"]
+        - framework: "TENSORFLOW"
+          versions: ["2.12", "2.13"]
+      resourceCapacity:
+        maxGpuCount: 8
+        maxCpuCores: 64
+        maxMemoryGb: 256
+      supportedDataFormats: ["CSV", "PARQUET", "TFRECORD"]
+
+  - name: "Query training capabilities"
+    uri: "{apiRoot}/r1-aiml/v1/mlTrainingCapabilities"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+# SECTION 5.7: rApp Management Services (R1-rApp aligned)
+rapp_registration:
+  - name: "Register rApp"
+    uri: "{apiRoot}/r1-rapp-management/v1/rapps"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/r1-rapp-management/v1/rapps/{rAppId}"
+    example_payload:
+      rAppName: "rApp-TrafficOptimizer"
+      rAppDescription: "Traffic optimization and load balancing rApp"
+      vendor: "Nokia"
+      softwareVersion: "1.0.0"
+      rAppType: "SERVICE_PRODUCER"
+      requiredServices:
+        - serviceApiId: "a1-policy-management"
+          version: "v1"
+        - serviceApiId: "data-management"
+          version: "v1"
+      providedServices:
+        - apiName: "traffic-optimization"
+          apiVersion: "v1"
+      securityRequirements:
+        authenticationMethods: ["OAUTH"]
+        requiredScopes: ["read:policies", "write:policies"]
+      resourceRequirements:
+        cpu: "1000m"
+        memory: "1Gi"
+        storage: "10Gi"
+
+  - name: "Get rApp details"
+    uri: "{apiRoot}/r1-rapp-management/v1/rapps/{rAppId}"
+    method: "GET"
+    response_code: 200
+    example_payload: null
+
+  - name: "Update rApp registration"
+    uri: "{apiRoot}/r1-rapp-management/v1/rapps/{rAppId}"
+    method: "PUT"
+    response_code: 200
+    example_payload:
+      rAppName: "rApp-TrafficOptimizer"
+      softwareVersion: "1.1.0"
+      vendor: "Nokia"
+      rAppType: "SERVICE_PRODUCER"
+
+  - name: "Deregister rApp"
+    uri: "{apiRoot}/r1-rapp-management/v1/rapps/{rAppId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+  - name: "List all rApps"
+    uri: "{apiRoot}/r1-rapp-management/v1/rapps"
+    method: "GET"
+    response_code: 200
+    query_params:
+      - name: "vendor"
+        required: false
+      - name: "rAppType"
+        required: false
+    example_payload: null
+
+  - name: "Get rApp status"
+    uri: "{apiRoot}/r1-rapp-management/v1/rapps/{rAppId}/status"
+    method: "GET"
+    response_code: 200
+    example_payload: null

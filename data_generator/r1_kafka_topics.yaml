@@ -1,0 +1,122 @@
+# r1_kafka_topics.yaml
+# O-RAN R1 Kafka-based streaming topics from R1TP Section 6
+# =========================================================================
+
+ue_telemetry:
+  - description: "Stream UE measurements to telemetry topic"
+    topic: "oran.ue-measurements.v1"
+    operation: "PRODUCE"
+    example:
+      timestamp: "2024-01-15T10:30:00Z"
+      ueId: "imsi-310150123456789"
+      cellId: "NRCell-100"
+      measurements:
+        rsrp_dbm: -85
+        rsrq_db: -10
+        sinr_db: 15
+        throughput_dl_mbps: 50
+        throughput_ul_mbps: 20
+  
+  - description: "Subscribe to UE telemetry stream"
+    topic: "oran.ue-measurements.v1"
+    operation: "CONSUME"
+    example:
+      consumer_group: "rapp-analytics-group"
+      auto_offset_reset: "latest"
+
+cell_kpis:
+  - description: "Publish cell KPIs to monitoring topic"
+    topic: "oran.cell-kpis.v1"
+    operation: "PRODUCE"
+    example:
+      timestamp: "2024-01-15T10:30:00Z"
+      cellId: "NRCell-100"
+      kpis:
+        prb_utilization_dl_pct: 75.5
+        prb_usage_dl: 180
+        active_ues: 250
+        throughput_dl_mbps_avg: 45
+        handover_success_rate_pct: 98.5
+  
+  - description: "Monitor cell KPIs stream"
+    topic: "oran.cell-kpis.v1"
+    operation: "CONSUME"
+    example:
+      consumer_group: "rapp-monitoring-group"
+      auto_offset_reset: "earliest"
+
+alarms:
+  - description: "Send alarm event to alarm topic"
+    topic: "oran.alarms.v1"
+    operation: "PRODUCE"
+    example:
+      timestamp: "2024-01-15T10:30:00Z"
+      alarmId: "alarm-12345"
+      severity: "CRITICAL"
+      source: "NRCell-100"
+      alarmType: "HIGH_PRB_UTILIZATION"
+      description: "PRB utilization exceeded 90% threshold"
+  
+  - description: "Subscribe to alarm stream"
+    topic: "oran.alarms.v1"
+    operation: "CONSUME"
+    example:
+      consumer_group: "rapp-fault-mgmt-group"
+      auto_offset_reset: "latest"
+
+policy_notifications:
+  - description: "Receive A1 policy update notifications"
+    topic: "oran.a1-policy-notifications.v1"
+    operation: "CONSUME"
+    example:
+      consumer_group: "rapp-policy-consumer"
+      auto_offset_reset: "latest"
+
+model_performance:
+  - description: "Stream AI/ML model performance metrics"
+    topic: "oran.aiml-model-performance.v1"
+    operation: "PRODUCE"
+    example:
+      timestamp: "2024-01-15T10:30:00Z"
+      modelId: "model-001"
+      metrics:
+        accuracy: 0.95
+        latency_dl_ms: 25
+        throughput_dl_mbps: 1000
+  
+  - description: "Monitor AI/ML model performance"
+    topic: "oran.aiml-model-performance.v1"
+    operation: "CONSUME"
+    example:
+      consumer_group: "rapp-mlops-monitor"
+      auto_offset_reset: "earliest"
+
+enrichment_data:
+  - description: "Publish enrichment information data"
+    topic: "oran.enrichment-data.v1"
+    operation: "PRODUCE"
+    example:
+      timestamp: "2024-01-15T10:30:00Z"
+      eiTypeId: "ue-location-data"
+      data:
+        ueId: "imsi-310150123456789"
+        location:
+          latitude: 37.7749
+          longitude: -122.4194
+          accuracy: 50
+
+data_delivery:
+  - description: "Deliver subscribed data via streaming"
+    topic: "oran.data-delivery.v1"
+    operation: "PRODUCE"
+    example:
+      timestamp: "2024-01-15T10:30:00Z"
+      dataJobId: "job-001"
+      dmeTypeId:
+        namespace: "oran-dmf"
+        name: "ue-metrics-v1"
+      data:
+        ueId: "imsi-310150123456789"
+        metrics:
+          rsrp_dbm: -85
+          throughput_dl_mbps: 50

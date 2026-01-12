@@ -1,0 +1,489 @@
+# r1_schemas.yaml
+# JSON Schema definitions for O-RAN R1 API payloads
+# Aligned with 3GPP CAPIF (TS 29.222) and O-RAN R1GAP/R1AP specifications
+# =========================================================================
+#
+# Schema Reference:
+#   - Service Publishing: ServiceAPIDescription (3GPP TS 29.222)
+#   - A1 Policy: A1Policy (O-RAN.WG2.R1AP)
+#   - Data Management: InfoJob, InfoType (O-RAN R1-DME)
+#   - AI/ML: MLModel, MLTrainingJob (O-RAN R1-AIML)
+#   - rApp: rAppRegistration (O-RAN R1-rApp)
+# =========================================================================
+
+# CAPIF Service Registration Schema (3GPP TS 29.222)
+service_registration:
+  type: "object"
+  description: "ServiceAPIDescription per 3GPP TS 29.222"
+  properties:
+    apiName:
+      type: "string"
+      description: "API name - unique identifier"
+    aefProfiles:
+      type: "array"
+      minItems: 1
+      items:
+        type: "object"
+        properties:
+          aefId:
+            type: "string"
+          versions:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                apiVersion:
+                  type: "string"
+                resources:
+                  type: "array"
+                  items:
+                    type: "object"
+                    properties:
+                      resourceName:
+                        type: "string"
+                      commType:
+                        type: "string"
+                        enum: ["REQUEST_RESPONSE", "SUBSCRIBE_NOTIFY"]
+                      uri:
+                        type: "string"
+                      operations:
+                        type: "array"
+                        items:
+                          type: "string"
+                          enum: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+          protocol:
+            type: "string"
+            enum: ["HTTP_1_1", "HTTP_2"]
+          dataFormat:
+            type: "string"
+            enum: ["JSON", "XML"]
+          securityMethods:
+            type: "array"
+            items:
+              type: "string"
+              enum: ["PSK", "PKI", "OAUTH"]
+          interfaceDescriptions:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                ipv4Addr:
+                  type: "string"
+                  format: "ipv4"
+                ipv6Addr:
+                  type: "string"
+                  format: "ipv6"
+                port:
+                  type: "integer"
+                  minimum: 1
+                  maximum: 65535
+    description:
+      type: "string"
+    supportedFeatures:
+      type: "string"
+      pattern: "^[A-Fa-f0-9]*$"
+  required: ["apiName", "aefProfiles"]
+
+# R1 Data Management Schema (O-RAN R1-DME)
+data_registration:
+  type: "object"
+  description: "Data Producer Registration per R1-DME"
+  properties:
+    infoTypeId:
+      type: "string"
+      description: "Information type identifier"
+    infoProducerId:
+      type: "string"
+      description: "Producer identifier"
+    infoJobCallbackUrl:
+      type: "string"
+      format: "uri"
+    supportedDeliveryMethods:
+      type: "array"
+      items:
+        type: "string"
+        enum: ["PUSH", "PULL", "STREAMING"]
+    dataReportingPeriod:
+      type: "integer"
+      minimum: 1
+    supportedFeatures:
+      type: "string"
+  required: ["infoTypeId", "infoProducerId"]
+
+data_subscription:
+  type: "object"
+  description: "Info Job per R1-DME"
+  properties:
+    infoTypeId:
+      type: "string"
+    infoJobData:
+      type: "object"
+      properties:
+        filterCriteria:
+          type: "object"
+        deliveryMethod:
+          type: "string"
+          enum: ["PUSH", "PULL", "STREAMING"]
+        reportingPeriod:
+          type: "integer"
+    targetUri:
+      type: "string"
+      format: "uri"
+    owner:
+      type: "string"
+  required: ["infoTypeId", "targetUri"]
+
+data_offer:
+  type: "object"
+  description: "Data Offer per R1-DME"
+  properties:
+    infoTypeId:
+      type: "string"
+    dataCharacteristics:
+      type: "object"
+      properties:
+        timeInterval:
+          type: "object"
+          properties:
+            start:
+              type: "string"
+              format: "date-time"
+            end:
+              type: "string"
+              format: "date-time"
+        granularityPeriod:
+          type: "integer"
+    supportedDeliveryMethod:
+      type: "string"
+      enum: ["PUSH", "PULL", "STREAMING"]
+    offerExpirationTime:
+      type: "string"
+      format: "date-time"
+  required: ["infoTypeId", "supportedDeliveryMethod"]
+
+# A1 Policy Management Schema (O-RAN R1-AP v5.0)
+a1_policy_management:
+  type: "object"
+  description: "A1 Policy per O-RAN R1-AP"
+  properties:
+    policyId:
+      type: "string"
+      description: "Policy instance identifier"
+    policyTypeId:
+      type: "string"
+      description: "Policy type identifier (e.g., ORAN_QoSTarget_1.0.0)"
+    nearRtRicId:
+      type: "string"
+      description: "Near-RT RIC identifier"
+    serviceAreaId:
+      type: "string"
+    policyData:
+      type: "object"
+      description: "Policy payload - schema defined by policyTypeId"
+    transient:
+      type: "boolean"
+      default: false
+    statusNotificationUri:
+      type: "string"
+      format: "uri"
+  required: ["policyId", "policyTypeId", "nearRtRicId", "policyData"]
+
+# A1 Enrichment Information Schema
+a1_enrichment_information:
+  type: "object"
+  description: "EI Type Registration per R1-A1-EI"
+  properties:
+    eiTypeId:
+      type: "string"
+    eiJobParametersSchema:
+      type: "object"
+      description: "JSON Schema for EI job parameters"
+  required: ["eiTypeId"]
+
+# AI/ML Model Registration Schema (O-RAN R1-AIML)
+aiml_model_registration:
+  type: "object"
+  description: "ML Model Registration per R1-AIML"
+  properties:
+    modelName:
+      type: "string"
+    modelVersion:
+      type: "string"
+    modelDescription:
+      type: "string"
+    modelFramework:
+      type: "string"
+      enum: ["TENSORFLOW", "PYTORCH", "ONNX", "SCIKIT_LEARN", "XGBOOST"]
+    modelFormat:
+      type: "string"
+      enum: ["ONNX", "SAVED_MODEL", "H5", "PT", "PICKLE"]
+    modelUri:
+      type: "string"
+      format: "uri"
+    inputSchema:
+      type: "object"
+      description: "JSON Schema for model input"
+    outputSchema:
+      type: "object"
+      description: "JSON Schema for model output"
+    supportedFeatures:
+      type: "string"
+  required: ["modelName", "modelVersion", "modelFramework"]
+
+# AI/ML Training Job Schema
+aiml_model_training:
+  type: "object"
+  description: "ML Training Job per R1-AIML"
+  properties:
+    trainingJobName:
+      type: "string"
+    modelId:
+      type: "string"
+    trainingDataUri:
+      type: "string"
+      format: "uri"
+    hyperparameters:
+      type: "object"
+      properties:
+        learningRate:
+          type: "number"
+        batchSize:
+          type: "integer"
+        epochs:
+          type: "integer"
+        optimizer:
+          type: "string"
+    resourceRequirements:
+      type: "object"
+      properties:
+        gpuCount:
+          type: "integer"
+        cpuCores:
+          type: "integer"
+        memoryGb:
+          type: "integer"
+    callbackUri:
+      type: "string"
+      format: "uri"
+  required: ["modelId"]
+
+# rApp Registration Schema (O-RAN R1-rApp)
+rapp_registration:
+  type: "object"
+  description: "rApp Registration per R1-rApp"
+  properties:
+    rAppName:
+      type: "string"
+    rAppDescription:
+      type: "string"
+    vendor:
+      type: "string"
+    softwareVersion:
+      type: "string"
+    rAppType:
+      type: "string"
+      enum: ["SERVICE_PRODUCER", "SERVICE_CONSUMER", "BOTH"]
+    requiredServices:
+      type: "array"
+      items:
+        type: "object"
+        properties:
+          serviceApiId:
+            type: "string"
+          version:
+            type: "string"
+    providedServices:
+      type: "array"
+      items:
+        type: "object"
+        properties:
+          apiName:
+            type: "string"
+          apiVersion:
+            type: "string"
+    securityRequirements:
+      type: "object"
+      properties:
+        authenticationMethods:
+          type: "array"
+          items:
+            type: "string"
+            enum: ["OAUTH", "PKI", "PSK"]
+        requiredScopes:
+          type: "array"
+          items:
+            type: "string"
+    resourceRequirements:
+      type: "object"
+      properties:
+        cpu:
+          type: "string"
+        memory:
+          type: "string"
+        storage:
+          type: "string"
+  required: ["rAppName", "vendor", "softwareVersion", "rAppType"]
+
+# Configuration Management Schema (3GPP TS 28.532)
+configuration_management:
+  type: "object"
+  description: "Configuration per 3GPP TS 28.532"
+  properties:
+    id:
+      type: "string"
+    attributes:
+      type: "object"
+    gnbDuFunction:
+      type: "array"
+      items:
+        type: "object"
+        properties:
+          id:
+            type: "string"
+          attributes:
+            type: "object"
+          nrCellDu:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                id:
+                  type: "string"
+                attributes:
+                  type: "object"
+  required: ["id"]
+
+# Fault Management - Alarm Schema (3GPP TS 28.532)
+fault_management:
+  type: "object"
+  description: "Alarm Record per 3GPP TS 28.532"
+  properties:
+    alarmId:
+      type: "string"
+    objectInstance:
+      type: "string"
+    notificationId:
+      type: "integer"
+    alarmRaisedTime:
+      type: "string"
+      format: "date-time"
+    alarmType:
+      type: "string"
+      enum: ["COMMUNICATIONS_ALARM", "PROCESSING_ERROR_ALARM", "ENVIRONMENTAL_ALARM", "QUALITY_OF_SERVICE_ALARM", "EQUIPMENT_ALARM"]
+    perceivedSeverity:
+      type: "string"
+      enum: ["CRITICAL", "MAJOR", "MINOR", "WARNING", "INDETERMINATE", "CLEARED"]
+    ackState:
+      type: "string"
+      enum: ["ACKNOWLEDGED", "UNACKNOWLEDGED"]
+    ackUserId:
+      type: "string"
+    ackSystemId:
+      type: "string"
+
+# Performance Management - PM Job Schema (3GPP TS 28.532)
+performance_management:
+  type: "object"
+  description: "PM Job per 3GPP TS 28.532"
+  properties:
+    granularityPeriod:
+      type: "integer"
+      minimum: 1
+    reportingPeriod:
+      type: "integer"
+      minimum: 1
+    measurementTypes:
+      type: "array"
+      items:
+        type: "string"
+    objectInstances:
+      type: "array"
+      items:
+        type: "string"
+    fileBasedGp:
+      type: "integer"
+    streamTarget:
+      type: "string"
+      format: "uri"
+  required: ["measurementTypes", "objectInstances"]
+
+# CAPIF Events Subscription Schema
+capif_events_subscription:
+  type: "object"
+  description: "Event Subscription per 3GPP TS 29.222"
+  properties:
+    events:
+      type: "array"
+      items:
+        type: "string"
+        enum: [
+          "SERVICE_API_AVAILABLE",
+          "SERVICE_API_UNAVAILABLE",
+          "SERVICE_API_UPDATE",
+          "API_INVOKER_ONBOARDED",
+          "API_INVOKER_OFFBOARDED",
+          "API_INVOKER_UPDATED",
+          "ACCESS_CONTROL_POLICY_UPDATE",
+          "ACCESS_CONTROL_POLICY_UNAVAILABLE",
+          "API_TOPOLOGY_HIDING_CREATED",
+          "API_TOPOLOGY_HIDING_REVOKED"
+        ]
+    notificationDestination:
+      type: "string"
+      format: "uri"
+    eventFilters:
+      type: "array"
+      items:
+        type: "object"
+        properties:
+          apiIds:
+            type: "array"
+            items:
+              type: "string"
+          aefIds:
+            type: "array"
+            items:
+              type: "string"
+    supportedFeatures:
+      type: "string"
+  required: ["events", "notificationDestination"]
+
+# O2 Infrastructure Management Schema
+o2_infrastructure_management:
+  type: "object"
+  description: "O2IMS Resource per O-RAN.WG6.O2"
+  properties:
+    resourcePoolId:
+      type: "string"
+    resourceId:
+      type: "string"
+    resourceTypeId:
+      type: "string"
+    name:
+      type: "string"
+    description:
+      type: "string"
+    globalAssetId:
+      type: "string"
+    extensions:
+      type: "object"
+
+# O2 Deployment Management Schema
+o2_deployment_management:
+  type: "object"
+  description: "NF Deployment per O-RAN.WG6.O2-DMS"
+  properties:
+    name:
+      type: "string"
+    description:
+      type: "string"
+    nfDeploymentDescriptorId:
+      type: "string"
+    parameterOverrides:
+      type: "object"
+      properties:
+        replicas:
+          type: "integer"
+        resourceRequests:
+          type: "object"
+  required: ["name", "nfDeploymentDescriptorId"]

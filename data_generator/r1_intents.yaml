@@ -1,0 +1,326 @@
+# r1_intents.yaml
+# Natural language intent variations for each R1 service category
+# Maps API operations to conversational instructions
+# =========================================================================
+
+bootstrap:
+  GET:
+    - "Get bootstrap information from SMO"
+    - "Discover R1 service endpoints"
+    - "What are the available R1 services?"
+    - "Show me bootstrap configuration"
+
+service_registration:
+  POST:
+    - "Register my rApp service API"
+    - "I need to publish my API service"
+    - "Make my service discoverable on R1"
+    - "Expose my traffic optimization service"
+    - "Register a new service endpoint"
+  PUT:
+    - "Update my service metadata"
+    - "Modify service endpoint configuration"
+    - "Change my API service details"
+  DELETE:
+    - "Deregister my API service"
+    - "Remove service registration"
+    - "I no longer provide this service"
+  GET:
+    - "Get my registered service details"
+    - "Show me my service registration"
+
+service_discovery:
+  GET:
+    - "Discover available service APIs"
+    - "What services are available on R1?"
+    - "Find services I can consume"
+    - "List all registered APIs"
+  POST:
+    - "Subscribe to service availability changes"
+    - "Notify me when new services are registered"
+    - "I want to know about service updates"
+  DELETE:
+    - "Unsubscribe from service notifications"
+    - "Stop notifying me about service changes"
+
+data_registration:
+  POST:
+    - "Register as data producer for UE metrics"
+    - "I can produce cell KPI data"
+    - "Expose my data production capability"
+    - "Register DME type for telemetry"
+    - "I have network performance data to share"
+  PUT:
+    - "Update my data production capabilities"
+    - "Modify DME type registration"
+  DELETE:
+    - "Deregister data production capability"
+    - "I no longer produce this data type"
+  GET:
+    - "Query my DME type registration"
+    - "Show my data production capabilities"
+
+data_discovery:
+  GET:
+    - "Discover available DME types"
+    - "What data types can I subscribe to?"
+    - "Find data producers for UE metrics"
+    - "List available data sources"
+  POST:
+    - "Subscribe to DME type changes"
+    - "Notify me when new data types are registered"
+
+data_request:
+  POST:
+    - "Request historical UE measurement data"
+    - "I need cell KPI data for analysis"
+    - "Get me performance data for last month"
+    - "Request data for specific time period"
+  GET:
+    - "Check status of my data request"
+    - "Is my data ready yet?"
+  DELETE:
+    - "Cancel my data request"
+    - "I don't need this data anymore"
+
+data_subscription:
+  POST:
+    - "Subscribe to real-time cell KPIs"
+    - "I want continuous UE telemetry"
+    - "Stream network performance data to me"
+    - "Set up data subscription for monitoring"
+  PATCH:
+    - "Update my data subscription parameters"
+    - "Change reporting period to 5 minutes"
+    - "Modify data subscription filters"
+  DELETE:
+    - "Unsubscribe from data stream"
+    - "Stop sending me this data"
+  GET:
+    - "Get my data subscription status"
+    - "Show me current data subscriptions"
+
+data_offer:
+  POST:
+    - "I have historical data to offer"
+    - "Proactively provide measurement data"
+    - "Offer collected telemetry to data lake"
+    - "I want to contribute archived data"
+  GET:
+    - "Get my data offer details"
+    - "Check status of data offer"
+  DELETE:
+    - "Terminate data offer"
+    - "Stop offering this data"
+
+a1_policy_management:
+  POST:
+    - "Create QoS policy for enterprise slice"
+    - "Define traffic steering rules"
+    - "Set up congestion control policy"
+    - "Create A1 policy for load balancing"
+    - "Establish network slice QoS parameters"
+  PUT:
+    - "Update A1 policy parameters"
+    - "Modify QoS thresholds"
+    - "Change traffic steering rules"
+  DELETE:
+    - "Remove A1 policy"
+    - "Deactivate traffic steering policy"
+    - "Delete QoS configuration"
+  GET:
+    - "Get policy type information"
+    - "Show me A1 policy details"
+    - "Query policy status"
+    - "What policies are active?"
+
+a1_enrichment_information:
+  POST:
+    - "Register enrichment information type"
+    - "I can provide UE location data"
+    - "Expose EI source data"
+  DELETE:
+    - "Deregister EI type"
+    - "Stop providing enrichment data"
+
+network_information:
+  GET:
+    - "Query cell information"
+    - "Get details about cells in my area"
+    - "What cells are available?"
+    - "Show me network topology"
+
+fault_management:
+  GET:
+    - "Query active alarms"
+    - "Show me critical alerts"
+    - "What faults are currently active?"
+    - "Get alarm details"
+  PATCH:
+    - "Acknowledge this alarm"
+    - "Mark alarm as acknowledged"
+    - "I'm working on this fault"
+
+performance_management:
+  GET:
+    - "Query performance metrics"
+    - "Get PM data for analysis"
+    - "Show me network KPIs"
+    - "Retrieve performance measurements"
+
+configuration_management:
+  GET:
+    - "Get configuration schemas"
+    - "Read current RAN configuration"
+    - "Show me network element settings"
+  PUT:
+    - "Update cell configuration"
+    - "Modify gNB parameters"
+    - "Write new network configuration"
+    - "Change transmit power settings"
+
+o2_infrastructure_management:
+  GET:
+    - "Query O-Cloud infrastructure inventory"
+    - "Show me infrastructure resources"
+    - "Get O-Cloud monitoring data"
+
+o2_deployment_management:
+  GET:
+    - "Query deployment status"
+    - "Show me deployed workloads"
+    - "Get O-Cloud deployment monitoring"
+
+aiml_model_registration:
+  POST:
+    - "Register my trained PyTorch model"
+    - "Add AI model for traffic prediction"
+    - "I have a new anomaly detection model"
+    - "Register pre-trained ML model"
+  PUT:
+    - "Update model registration"
+    - "New version of my model is available"
+  DELETE:
+    - "Deregister AI/ML model"
+    - "Remove model from registry"
+  GET:
+    - "Query registered models"
+    - "Show me available AI models"
+
+aiml_model_storage:
+  POST:
+    - "Store my trained model"
+    - "Upload model binary"
+    - "Save model to repository"
+  DELETE:
+    - "Delete stored model"
+    - "Remove model from storage"
+
+aiml_model_discovery:
+  GET:
+    - "Discover available AI/ML models"
+    - "What trained models can I use?"
+    - "Find models for traffic prediction"
+
+aiml_model_training:
+  POST:
+    - "Start training job for my model"
+    - "Train model on new dataset"
+    - "Request model retraining with updated parameters"
+    - "I need to retrain my anomaly detector"
+  GET:
+    - "Check training job status"
+    - "Is my model training complete?"
+  DELETE:
+    - "Cancel model training"
+    - "Stop training job"
+
+aiml_performance_monitoring:
+  POST:
+    - "Subscribe to model performance metrics"
+    - "Monitor my deployed model"
+    - "I want to track model accuracy"
+  DELETE:
+    - "Unsubscribe from performance monitoring"
+    - "Stop monitoring this model"
+
+aiml_model_inference:
+  GET:
+    - "What are the inference capabilities?"
+    - "Query model inference options"
+  POST:
+    - "Request inference from traffic model"
+    - "Get predictions for current network state"
+    - "Run model inference on this data"
+
+aiml_training_capability:
+  POST:
+    - "Register my training infrastructure"
+    - "I can provide GPU resources for training"
+    - "Offer training capability"
+  GET:
+    - "Query available training capabilities"
+    - "What training resources are available?"
+
+rapp_registration:
+  POST:
+    - "Register my rApp instance"
+    - "Onboard my application to SMO"
+    - "I need to register a new rApp"
+    - "Deploy rApp with vendor credentials"
+  PUT:
+    - "Update rApp metadata"
+    - "Change rApp version information"
+  DELETE:
+    - "Deregister my rApp"
+    - "Terminate rApp instance"
+    - "Uninstall application"
+
+# KPI-Specific Query Intents (Canonical Names)
+kpi_query_rsrp:
+  GET:
+    - "Get RSRP values for cell {cellId}"
+    - "Show me RSRP measurements"
+    - "What's the signal strength (RSRP)?"
+    - "Query RSRP for coverage analysis"
+    - "Retrieve RSRP values in dBm"
+
+kpi_query_sinr:
+  GET:
+    - "Get SINR values for interference analysis"
+    - "Show me signal-to-noise ratio"
+    - "What's the SINR in cell {cellId}?"
+    - "Query SINR for quality assessment"
+    - "Check interference levels with SINR"
+
+kpi_query_throughput:
+  GET:
+    - "Get throughput metrics"
+    - "Show me downlink throughput"
+    - "What's the average data rate?"
+    - "Query DL and UL throughput"
+    - "Retrieve throughput in Mbps"
+
+kpi_query_prb:
+  GET:
+    - "Get PRB utilization"
+    - "Show me resource block usage"
+    - "What's the PRB load?"
+    - "Query downlink PRB usage"
+    - "Check if PRBs are congested"
+
+multi_kpi_coverage:
+  POST:
+    - "Diagnose coverage issues in cell {cellId}"
+    - "Get all coverage KPIs (RSRP, RSRQ, SINR)"
+    - "Show me RF quality metrics"
+    - "Run coverage diagnostics"
+    - "Subscribe to coverage monitoring KPIs"
+
+multi_kpi_capacity:
+  POST:
+    - "Diagnose capacity issues"
+    - "Get capacity metrics (PRB, throughput, active UEs)"
+    - "Show me load and utilization KPIs"
+    - "Check if cell is congested"
+    - "Subscribe to capacity monitoring"

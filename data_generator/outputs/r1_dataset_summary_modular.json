@@ -1,0 +1,90 @@
+{
+  "generation_timestamp": "2025-11-26T15:51:42.656391",
+  "configuration": {
+    "rest_ratio": 0.99,
+    "kafka_ratio": 0.01,
+    "lifecycle_ratio": 0.0
+  },
+  "dataset_sizes": {
+    "sft_total": 100,
+    "grpo_total": 25
+  },
+  "protocol_distribution": {
+    "rest": 99,
+    "kafka": 1,
+    "rest_percentage": 99.0,
+    "kafka_percentage": 1.0
+  },
+  "service_category_distribution": {
+    "performance_management": 5,
+    "data_offer": 4,
+    "aiml_performance_monitoring": 4,
+    "aiml_model_storage": 4,
+    "aiml_model_registration": 5,
+    "service_discovery": 5,
+    "service_registration": 7,
+    "aiml_model_inference": 5,
+    "a1_policy_management": 2,
+    "aiml_training_capability": 1,
+    "aiml_model_training": 5,
+    "o2_infrastructure_management": 5,
+    "a1_enrichment_information": 2,
+    "data_request": 6,
+    "data_subscription": 3,
+    "rapp_registration": 5,
+    "fault_management": 8,
+    "data_registration": 5,
+    "bootstrap": 4,
+    "data_discovery": 2,
+    "network_information": 3,
+    "aiml_model_discovery": 3,
+    "o2_deployment_management": 3,
+    "other": 1,
+    "configuration_management": 3
+  },
+  "validation_stats": {
+    "total_validated": 124,
+    "valid_count": 118,
+    "invalid_count": 6,
+    "validation_rate": 95.2
+  },
+  "grpo_reward_distribution": {
+    "high": 25,
+    "medium": 0,
+    "low": 0
+  },
+  "specifications_aligned": [
+    "O-RAN.WG2.TS.R1GAP-R004-v12.00 (General Aspects & Principles)",
+    "O-RAN.WG2.TS.R1AP-R004-v9.00 (Application Protocols)",
+    "O-RAN.WG2.TS.R1TP-R004-v04.03 (Transport Protocols)"
+  ],
+  "service_coverage": {
+    "total_categories": 24,
+    "categories": [
+      "bootstrap",
+      "service_registration",
+      "service_discovery",
+      "data_registration",
+      "data_discovery",
+      "data_request",
+      "data_subscription",
+      "data_offer",
+      "a1_policy_management",
+      "a1_enrichment_information",
+      "network_information",
+      "fault_management",
+      "performance_management",
+      "configuration_management",
+      "o2_infrastructure_management",
+      "o2_deployment_management",
+      "aiml_model_registration",
+      "aiml_model_storage",
+      "aiml_model_discovery",
+      "aiml_model_training",
+      "aiml_performance_monitoring",
+      "aiml_model_inference",
+      "aiml_training_capability",
+      "rapp_registration"
+    ]
+  }
+}

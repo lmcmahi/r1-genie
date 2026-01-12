@@ -1,0 +1,36 @@
+[project]
+name = "r1-genie"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Madi Hirab",email = "madi.hirab@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pyyaml>=6.0",
+    "jsonschema>=4.0",
+    "tqdm>=4.0",
+    "python-dotenv>=1.0",
+    # RAG System Dependencies
+    "qdrant-client>=1.7.0",
+    "llama-index>=0.10.0",
+    "llama-parse>=0.4.0",
+    "openai>=1.0.0",
+    "anthropic>=0.18.0",
+    # API and Parsing
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+    "openapi-spec-validator>=0.7.0",
+    "python-multipart>=0.0.9",  # For file uploads
+    # Utilities
+    "redis>=5.0.0",  # For caching
+]
+
+[tool.poetry]
+packages = [{include = "r1_genie", from = "src"}]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

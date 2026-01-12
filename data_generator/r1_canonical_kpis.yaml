@@ -1,0 +1,302 @@
+# Canonical O-RAN R1 KPI Definitions
+# Based on: 3GPP TS 28.552, TS 38.215, O-RAN.WG3.O1
+# ================================================================
+
+metadata:
+  version: "1.0"
+  last_updated: "2025-01-26"
+  standards:
+    - "3GPP TS 38.215 - Physical layer measurements"
+    - "3GPP TS 28.552 - 5G NR Performance Measurements"
+    - "O-RAN.WG3.O1-Interface - O1 Interface specification"
+
+# ================================================================
+# Canonical KPI Definitions
+# ================================================================
+
+canonical_kpis:
+
+  # RF Measurements (3GPP TS 38.215)
+  rsrp_dbm:
+    full_name: "Reference Signal Received Power"
+    description: "Average power of resource elements carrying cell-specific reference signals"
+    category: "rf_measurements"
+    threegpp:
+      spec: "3GPP TS 38.215"
+      section: "5.1.1"
+      measurement_name: "SS-RSRP"
+    unit: "dBm"
+    data_type: "float"
+    range: [-140, -44]
+    granularity: ["per_ue", "per_beam"]
+    measurement_location: "UE"
+    thresholds:
+      excellent: [-44, -80]
+      good: [-80, -90]
+      fair: [-90, -100]
+      poor: [-100, -110]
+      very_poor: [-110, -140]
+    use_cases:
+      - "coverage_analysis"
+      - "cell_selection"
+      - "handover_decision"
+    related_kpis: ["rsrq_db", "sinr_db"]
+    vendor_mappings:
+      viavi: "Viavi.UE.Rsrp"
+      ericsson: "pmRadioRecInterferencePwr"
+      nokia: "RSRP_DBM"
+      generic: "SS-RSRP"
+
+  rsrq_db:
+    full_name: "Reference Signal Received Quality"
+    description: "Ratio of RSRP to RSSI (wideband received power)"
+    category: "rf_measurements"
+    threegpp:
+      spec: "3GPP TS 38.215"
+      section: "5.1.3"
+      measurement_name: "SS-RSRQ"
+    unit: "dB"
+    data_type: "float"
+    range: [-20, -3]
+    granularity: ["per_ue"]
+    measurement_location: "UE"
+    thresholds:
+      excellent: [-3, -10]
+      good: [-10, -15]
+      fair: [-15, -18]
+      poor: [-18, -20]
+    use_cases:
+      - "quality_analysis"
+      - "interference_detection"
+    vendor_mappings:
+      viavi: "Viavi.UE.Rsrq"
+      ericsson: "pmRadioRecInterferenceQuality"
+      nokia: "RSRQ_DB"
+      generic: "SS-RSRQ"
+
+  sinr_db:
+    full_name: "Signal-to-Interference-plus-Noise Ratio"
+    description: "Ratio of signal power to interference plus noise"
+    category: "rf_measurements"
+    threegpp:
+      spec: "3GPP TS 38.215"
+      section: "5.1.4"
+      measurement_name: "SS-SINR"
+    unit: "dB"
+    data_type: "float"
+    range: [-23, 40]
+    granularity: ["per_ue"]
+    measurement_location: "UE"
+    thresholds:
+      excellent: [20, 40]
+      good: [13, 20]
+      fair: [0, 13]
+      poor: [-3, 0]
+      very_poor: [-23, -3]
+    use_cases:
+      - "interference_analysis"
+      - "modulation_selection"
+      - "throughput_prediction"
+    vendor_mappings:
+      viavi: "Viavi.UE.RsSinr"
+      ericsson: "pmRadioSinr"
+      nokia: "SINR_DB"
+      generic: "SS-SINR"
+
+  # Throughput Metrics (3GPP TS 28.552)
+  throughput_dl_mbps:
+    full_name: "Downlink Throughput"
+    description: "Data rate in downlink direction per UE"
+    category: "throughput"
+    threegpp:
+      spec: "3GPP TS 28.552"
+      section: "5.1.1.1"
+      measurement_name: "DRBPdcpSduBitrateDL"
+    unit: "Mbps"
+    data_type: "float"
+    range: [0, 10000]
+    direction: "downlink"
+    granularity: ["per_ue"]
+    layer: "PDCP"
+    use_cases:
+      - "capacity_analysis"
+      - "qos_monitoring"
+      - "user_experience"
+    vendor_mappings:
+      viavi: "DRB.UEThpDl"
+      ericsson: "pmPdcpVolDlDrb"
+      nokia: "DL_USER_THROUGHPUT"
+      generic: "DRBPdcpSduBitrateDL"
+
+  throughput_ul_mbps:
+    full_name: "Uplink Throughput"
+    description: "Data rate in uplink direction per UE"
+    category: "throughput"
+    threegpp:
+      spec: "3GPP TS 28.552"
+      section: "5.1.1.2"
+      measurement_name: "DRBPdcpSduBitrateUL"
+    unit: "Mbps"
+    data_type: "float"
+    range: [0, 1000]
+    direction: "uplink"
+    granularity: ["per_ue"]
+    layer: "PDCP"
+    vendor_mappings:
+      viavi: "DRB.UEThpUl"
+      ericsson: "pmPdcpVolUlDrb"
+      nokia: "UL_USER_THROUGHPUT"
+      generic: "DRBPdcpSduBitrateUL"
+
+  # Resource Utilization (3GPP TS 28.552)
+  prb_usage_dl:
+    full_name: "Physical Resource Blocks Used Downlink"
+    description: "Number of PRBs allocated in downlink"
+    category: "resource_utilization"
+    threegpp:
+      spec: "3GPP TS 28.552"
+      section: "5.1.2.1"
+      measurement_name: "RRU.PrbUsedDl"
+    unit: "count"
+    data_type: "integer"
+    range: [0, 273]
+    direction: "downlink"
+    granularity: ["per_cell"]
+    use_cases:
+      - "capacity_planning"
+      - "load_balancing"
+      - "congestion_detection"
+    vendor_mappings:
+      viavi: "RRU.PrbUsedDl"
+      ericsson: "pmPrbUsedDl"
+      nokia: "PRB_USAGE_DL"
+      generic: "RRU.PrbUsedDl"
+
+  prb_usage_ul:
+    full_name: "Physical Resource Blocks Used Uplink"
+    description: "Number of PRBs allocated in uplink"
+    category: "resource_utilization"
+    threegpp:
+      spec: "3GPP TS 28.552"
+      section: "5.1.2.2"
+      measurement_name: "RRU.PrbUsedUl"
+    unit: "count"
+    data_type: "integer"
+    range: [0, 273]
+    direction: "uplink"
+    granularity: ["per_cell"]
+    vendor_mappings:
+      viavi: "RRU.PrbUsedUl"
+      ericsson: "pmPrbUsedUl"
+      nokia: "PRB_USAGE_UL"
+      generic: "RRU.PrbUsedUl"
+
+  prb_utilization_dl_pct:
+    full_name: "PRB Utilization Downlink Percentage"
+    description: "Percentage of PRBs used in downlink"
+    category: "resource_utilization"
+    unit: "percentage"
+    data_type: "float"
+    range: [0, 100]
+    direction: "downlink"
+    granularity: ["per_cell"]
+    derived_from: "prb_usage_dl"
+    formula: "(prb_usage_dl / prb_available_dl) * 100"
+    vendor_mappings:
+      viavi: "RRU.PrbUtilDl"
+      ericsson: "pmPrbUtilDl"
+      nokia: "PRB_UTILIZATION_DL_PCT"
+
+  # UE Connection Metrics
+  active_ues:
+    full_name: "Active UE Count"
+    description: "Number of UEs with active data sessions"
+    category: "connection"
+    threegpp:
+      spec: "3GPP TS 28.552"
+      section: "5.1.3.1"
+      measurement_name: "RRC.ConnMean"
+    unit: "count"
+    data_type: "integer"
+    range: [0, 1000]
+    granularity: ["per_cell"]
+    vendor_mappings:
+      viavi: "RRC.ConnMean"
+      ericsson: "pmActiveUeAvg"
+      nokia: "ACTIVE_UE_COUNT"
+      generic: "RRC.ConnMean"
+
+  rrc_connected_ues:
+    full_name: "RRC Connected UE Count"
+    description: "Number of UEs in RRC_CONNECTED state"
+    category: "connection"
+    threegpp:
+      spec: "3GPP TS 28.552"
+      measurement_name: "RRC.ConnMax"
+    unit: "count"
+    data_type: "integer"
+    range: [0, 1000]
+    granularity: ["per_cell"]
+    vendor_mappings:
+      viavi: "RRC.ConnMax"
+      ericsson: "pmRrcConnectedMax"
+      nokia: "RRC_CONNECTED_UE_MAX"
+
+  # Handover Metrics
+  handover_success_rate_pct:
+    full_name: "Handover Success Rate Percentage"
+    description: "Percentage of successful handovers"
+    category: "mobility"
+    unit: "percentage"
+    data_type: "float"
+    range: [0, 100]
+    vendor_mappings:
+      viavi: "MM.HoSuccRate"
+      ericsson: "pmHoSuccRate"
+      nokia: "HANDOVER_SUCCESS_RATE_PCT"
+
+  # Latency Metrics
+  latency_dl_ms:
+    full_name: "Downlink Latency"
+    description: "Average latency in downlink direction"
+    category: "latency"
+    unit: "ms"
+    data_type: "float"
+    range: [1, 100]
+    direction: "downlink"
+    granularity: ["per_ue"]
+    vendor_mappings:
+      viavi: "Viavi.DL.Latency"
+      ericsson: "pmLatencyDl"
+      nokia: "DL_LATENCY_MS"
+
+# KPI Categories for Use-Case Templates
+kpi_categories:
+  coverage_diagnostics:
+    description: "KPIs for diagnosing coverage issues"
+    primary_kpis:
+      - "rsrp_dbm"
+      - "rsrq_db"
+      - "sinr_db"
+    secondary_kpis:
+      - "active_ues"
+      - "handover_success_rate_pct"
+
+  capacity_diagnostics:
+    description: "KPIs for diagnosing capacity/congestion"
+    primary_kpis:
+      - "prb_utilization_dl_pct"
+      - "prb_usage_dl"
+      - "active_ues"
+      - "throughput_dl_mbps"
+    secondary_kpis:
+      - "latency_dl_ms"
+
+  interference_diagnostics:
+    description: "KPIs for diagnosing interference"
+    primary_kpis:
+      - "sinr_db"
+      - "rsrq_db"
+    secondary_kpis:
+      - "throughput_dl_mbps"
+      - "handover_success_rate_pct"
