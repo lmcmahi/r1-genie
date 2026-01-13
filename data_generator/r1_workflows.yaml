@@ -1,0 +1,938 @@
+# r1_workflows.yaml
+# O-RAN R1 Multi-Step Workflow Templates (R1AP-Compliant)
+# =========================================================================
+#
+# Reference: O-RAN.WG2.R1AP-v06.00, O-RAN.WG2.R1TD-v03.00, O-RAN.WG2.R1GAP-v09.00
+#
+# This file defines detailed workflow templates using R1AP-compliant
+# terminology and API paths. All workflows use ONLY R1 interface APIs.
+#
+# R1AP Key Terminology:
+#   - dmeTypeId: String format "<namespace>:<name>:<version>" (e.g., "oran:coverage-kpis:1.0.0")
+#     Note: Version commonly uses semantic versioning (e.g., "1.0.0") for interoperability
+#   - dataJobId: Data job identifier
+#   - DataJobInfo: Schema for data job creation (no jobOwner - use authN context)
+#   - dataDeliveryMode: CONTINUOUS | ONE_TIME
+#   - dataDeliveryMethod: PUSH_HTTP | PULL_HTTP | STREAMING
+#
+# data-category query parameter:
+#   - Values are IMPLEMENTATION-DEPENDENT (check your SMO's supported values)
+#   - R1AP defines the parameter but exact enum values vary by implementation
+#   - Safest approach: query without filter first, then use returned values
+#
+# PUSH_HTTP Data Delivery:
+#   - R1AP does NOT define OpenAPI for HTTP-based Push data delivery
+#   - Payload format is IMPLEMENTATION-SPECIFIC (defined by dataDeliverySchemaId)
+#   - Wire format is NOT standardized by R1AP
+#
+# DataAvailabilityNotification (separate mechanism):
+#   - Posted to dataAvailabilityNotificationUri with 204 No Content response
+#   - Different from actual data push
+#
+# IMPORTANT: Response field names in examples are ILLUSTRATIVE.
+# Actual field names must match DmeTypeRelatedCapabilities spec definition.
+# Consult your R1AP version for exact wire-format field names.
+#
+# R1 API Categories Included:
+#   - Data Discovery: /data-discovery/v2/dme-types
+#   - Data Access: /data-access/v1/data-jobs
+#   - A1 Policy: /r1-a1-policy-management/v1/policies
+#   - AI/ML: /r1-aiml/v1/mlModels
+#   - rApp Management: /r1-rapp-management/v1/rapps
+#
+# NOT INCLUDED (separate interfaces):
+#   - O1 APIs (fault_management, configuration_management, performance_management)
+#   - O2 APIs (o2_infrastructure_management, o2_deployment_management)
+# =========================================================================
+
+metadata:
+  version: "2.2.0"
+  description: "R1AP-compliant workflow templates for training dataset generation"
+  spec_reference: "O-RAN.WG2.R1AP-v06.00, O-RAN.WG2.R1TD-v03.00, O-RAN.WG2.R1GAP-v09.00"
+  workflow_count: 10
+
+# ============================================================
+# DATA MANAGEMENT WORKFLOWS
+# ============================================================
+workflows:
+  # -----------------------------------------------------------
+  # Coverage Monitoring Setup (R1AP-Compliant)
+  # -----------------------------------------------------------
+  coverage_monitoring_setup:
+    id: "wf_001"
+    name: "Coverage Monitoring Setup"
+    description: "Set up real-time monitoring for cell coverage KPIs using R1 Data Management"
+    category: "data_management"
+    complexity: "medium"
+    step_count: 3
+    includes_cleanup: true
+
+    intent_variations:
+      - "Set up real-time monitoring for cell {cellId} to detect coverage degradation"
+      - "Monitor RSRP and SINR for cell {cellId}"
+      - "I need to track coverage KPIs for {cellId}"
+      - "Create a coverage monitoring subscription for cell {cellId}"
+      - "Watch coverage metrics for {cellId} and alert on issues"
+      - "Set up RF quality monitoring for my cell"
+
+    context_parameters:
+      cellId:
+        type: "string"
+        examples: ["NRCell-100", "NRCell-200", "cell-001"]
+      reportingPeriod:
+        type: "integer"
+        default: 60
+        examples: [60, 300, 900]
+      kpis:
+        type: "array"
+        default: ["rsrp_dbm", "rsrq_db", "sinr_db"]
+
+    steps:
+      - step: 1
+        api: "data_discovery.GET_dme_types"
+        uri: "/data-discovery/v2/dme-types"
+        method: "GET"
+        purpose: "Discover available coverage DME types"
+        reasoning: "First, we need to discover what DME types are available in the system before creating a data job"
+        # NOTE: data-category filter is IMPLEMENTATION-DEPENDENT
+        # Safest to query without filter, then select from returned types
+        query_params: {}
+        inputs: {}
+        expected_outputs:
+          dmeTypeId: "oran:coverage-kpis:1.0.0"
+          dataDeliverySchemaId: "coverage-kpi-delivery-schema-v1"
+          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING"]
+
+      - step: 2
+        api: "data_access.POST_data_jobs"
+        uri: "/data-access/v1/data-jobs"
+        method: "POST"
+        purpose: "Create continuous data job for coverage KPIs"
+        reasoning: "Create a data job to receive continuous coverage metrics for the specified cell"
+        inputs:
+          dmeTypeId: "FROM step_1.dmeTypeId"
+          dataDeliverySchemaId: "FROM step_1.dataDeliverySchemaId"
+          cellId: "FROM context.cellId"
+          measurementTypes: "FROM context.kpis"
+          reportingPeriod: "FROM context.reportingPeriod"
+        request_body:
+          # NOTE: jobOwner is NOT part of R1AP DataJobInfo - ownership via authN context
+          dmeTypeId: "oran:coverage-kpis:1.0.0"
+          productionJobDefinition:
+            cellIdList: ["{cellId}"]
+            measurementTypes: ["rsrp_dbm", "rsrq_db", "sinr_db"]
+            reportingPeriod: 60
+          dataDeliveryMode: "CONTINUOUS"
+          dataDeliveryMethod: "PUSH_HTTP"
+          dataDeliverySchemaId: "coverage-kpi-delivery-schema-v1"
+          pushDeliveryDetailsHttp:
+            dataPushUri: "https://rapp.operator.com/callbacks/coverage-monitoring"
+        expected_outputs:
+          dataJobId: "job-cov-001"
+          status: "RUNNING"
+
+    cleanup:
+      - step: 3
+        api: "data_access.DELETE_data_jobs"
+        uri: "/data-access/v1/data-jobs/{dataJobId}"
+        method: "DELETE"
+        purpose: "Remove data job when monitoring is complete"
+        reasoning: "Clean up the data job subscription when monitoring is no longer needed"
+        inputs:
+          dataJobId: "FROM step_2.dataJobId"
+        trigger: "When monitoring objective achieved or cancelled"
+
+    expected_outcome: "Continuous monitoring of coverage KPIs (RSRP, RSRQ, SINR) via PUSH_HTTP."
+
+    # PUSH_HTTP Data Delivery:
+    # - R1AP does NOT define OpenAPI for HTTP-based Push data delivery
+    # - Payload format is IMPLEMENTATION-SPECIFIC (defined by dataDeliverySchemaId)
+    # - Example below is illustrative, actual format depends on implementation
+    data_delivery_format:
+      uri: "https://rapp.operator.com/callbacks/coverage-monitoring"
+      description: "Payload format is IMPLEMENTATION-SPECIFIC (not R1AP-standardized)"
+      payload_example:
+        # Example only - actual format defined by dataDeliverySchemaId implementation
+        cellId: "NRCell-100"
+        rsrp_dbm: -95
+        rsrq_db: -12
+        sinr_db: 8
+
+    kpis_involved: ["rsrp_dbm", "rsrq_db", "sinr_db"]
+    related_workflows: ["capacity_monitoring_setup", "historical_data_request"]
+
+  # -----------------------------------------------------------
+  # Capacity Monitoring Setup (R1AP-Compliant)
+  # -----------------------------------------------------------
+  capacity_monitoring_setup:
+    id: "wf_002"
+    name: "Capacity Monitoring Setup"
+    description: "Set up real-time monitoring for cell capacity and load using R1 Data Management"
+    category: "data_management"
+    complexity: "medium"
+    step_count: 3
+    includes_cleanup: true
+
+    intent_variations:
+      - "Monitor PRB utilization for cell {cellId}"
+      - "Set up capacity monitoring for {cellId}"
+      - "Track load metrics for my cell"
+      - "I want to watch throughput and PRB usage"
+      - "Alert me when {cellId} is getting congested"
+
+    context_parameters:
+      cellId:
+        type: "string"
+        examples: ["NRCell-100", "NRCell-200"]
+      prbThreshold:
+        type: "integer"
+        default: 85
+        examples: [70, 80, 85, 90]
+      reportingPeriod:
+        type: "integer"
+        default: 60
+
+    steps:
+      - step: 1
+        api: "data_discovery.GET_dme_types"
+        uri: "/data-discovery/v2/dme-types"
+        method: "GET"
+        purpose: "Discover available capacity DME types"
+        reasoning: "First, find what capacity metrics DME types are available"
+        # NOTE: data-category filter is IMPLEMENTATION-DEPENDENT
+        query_params: {}
+        inputs: {}
+        expected_outputs:
+          dmeTypeId: "oran:capacity-kpis:1.0.0"
+          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING"]
+
+      - step: 2
+        api: "data_access.POST_data_jobs"
+        uri: "/data-access/v1/data-jobs"
+        method: "POST"
+        purpose: "Create continuous data job for capacity KPIs"
+        reasoning: "Create data job for PRB utilization, active UEs, and throughput metrics"
+        inputs:
+          dmeTypeId: "FROM step_1.dmeTypeId"
+          cellId: "FROM context.cellId"
+          reportingPeriod: "FROM context.reportingPeriod"
+        request_body:
+          # NOTE: jobOwner is NOT part of R1AP DataJobInfo - ownership via authN context
+          dmeTypeId: "oran:capacity-kpis:1.0.0"
+          productionJobDefinition:
+            cellIdList: ["{cellId}"]
+            measurementTypes: ["prb_utilization_dl_pct", "prb_utilization_ul_pct", "active_ues", "throughput_dl_mbps_avg"]
+            reportingPeriod: 60
+          dataDeliveryMode: "CONTINUOUS"
+          dataDeliveryMethod: "PUSH_HTTP"
+          dataDeliverySchemaId: "capacity-kpi-delivery-schema-v1"
+          pushDeliveryDetailsHttp:
+            dataPushUri: "https://rapp.operator.com/callbacks/capacity-monitoring"
+        expected_outputs:
+          dataJobId: "job-cap-001"
+          status: "RUNNING"
+
+    cleanup:
+      - step: 3
+        api: "data_access.DELETE_data_jobs"
+        uri: "/data-access/v1/data-jobs/{dataJobId}"
+        method: "DELETE"
+        purpose: "Remove data job when monitoring is complete"
+        inputs:
+          dataJobId: "FROM step_2.dataJobId"
+        trigger: "When monitoring objective achieved or cancelled"
+
+    expected_outcome: "Real-time visibility into cell capacity via PUSH_HTTP."
+    kpis_involved: ["prb_utilization_dl_pct", "prb_utilization_ul_pct", "active_ues", "throughput_dl_mbps_avg"]
+    related_workflows: ["coverage_monitoring_setup", "qos_policy_creation"]
+
+  # -----------------------------------------------------------
+  # Historical Data Request (R1AP-Compliant)
+  # -----------------------------------------------------------
+  historical_data_request:
+    id: "wf_003"
+    name: "Historical Data Request"
+    description: "Request historical KPI data for analysis using R1 Data Management"
+    category: "data_management"
+    complexity: "easy"
+    step_count: 3
+    includes_cleanup: true
+
+    intent_variations:
+      - "Get historical RSRP data for cell {cellId} from {startDate} to {endDate}"
+      - "I need last week's performance data for {cellId}"
+      - "Request historical metrics for analysis"
+      - "Download KPI history for trending"
+      - "Get me the past month's data for {cellId}"
+
+    context_parameters:
+      cellId:
+        type: "string"
+        examples: ["NRCell-100"]
+      startDate:
+        type: "datetime"
+        examples: ["2024-01-01T00:00:00Z"]
+      endDate:
+        type: "datetime"
+        examples: ["2024-01-31T23:59:59Z"]
+      kpis:
+        type: "array"
+        examples: [["rsrp_dbm", "sinr_db"], ["prb_utilization_dl_pct", "throughput_dl_mbps_avg"]]
+
+    steps:
+      - step: 1
+        api: "data_discovery.GET_dme_types"
+        uri: "/data-discovery/v2/dme-types"
+        method: "GET"
+        purpose: "Find available DME types for historical data"
+        reasoning: "Identify what historical data DME types are available"
+        # NOTE: data-category filter is IMPLEMENTATION-DEPENDENT
+        query_params: {}
+        expected_outputs:
+          dmeTypeId: "oran:historical-kpis:1.0.0"
+
+      - step: 2
+        api: "data_access.POST_data_jobs"
+        uri: "/data-access/v1/data-jobs"
+        method: "POST"
+        purpose: "Request historical data (one-time)"
+        reasoning: "Create a one-time data job for the specified time range"
+        inputs:
+          dmeTypeId: "FROM step_1.dmeTypeId"
+          startTime: "FROM context.startDate"
+          endTime: "FROM context.endDate"
+          cellId: "FROM context.cellId"
+          measurementTypes: "FROM context.kpis"
+        request_body:
+          # NOTE: jobOwner is NOT part of R1AP DataJobInfo - ownership via authN context
+          dmeTypeId: "oran:historical-kpis:1.0.0"
+          productionJobDefinition:
+            cellIdList: ["{cellId}"]
+            measurementTypes: ["rsrp_dbm", "sinr_db"]
+            timeRange:
+              startTime: "{startDate}"
+              endTime: "{endDate}"
+          dataDeliveryMode: "ONE_TIME"
+          dataDeliveryMethod: "PUSH_HTTP"
+          dataDeliverySchemaId: "historical-kpi-delivery-schema-v1"
+          pushDeliveryDetailsHttp:
+            dataPushUri: "https://rapp.operator.com/callbacks/historical-data"
+        expected_outputs:
+          dataJobId: "job-hist-001"
+          status: "RUNNING"
+
+      - step: 3
+        api: "data_access.GET_data_job_status"
+        uri: "/data-access/v1/data-jobs/{dataJobId}/status"
+        method: "GET"
+        purpose: "Check request status"
+        reasoning: "Monitor the status of the data request until completion"
+        inputs:
+          dataJobId: "FROM step_2.dataJobId"
+        expected_outputs:
+          status: "COMPLETED"
+
+    cleanup:
+      - step: 4
+        api: "data_access.DELETE_data_jobs"
+        uri: "/data-access/v1/data-jobs/{dataJobId}"
+        method: "DELETE"
+        purpose: "Clean up completed data job"
+        inputs:
+          dataJobId: "FROM step_2.dataJobId"
+        trigger: "After data is received and processed"
+
+    expected_outcome: "Historical KPI data delivered via PUSH_HTTP for offline analysis and trending"
+    related_workflows: ["coverage_monitoring_setup", "capacity_monitoring_setup"]
+
+  # -----------------------------------------------------------
+  # QoS Policy Creation (R1AP-Compliant)
+  # -----------------------------------------------------------
+  qos_policy_creation:
+    id: "wf_004"
+    name: "QoS Policy Creation"
+    description: "Create A1 policy for QoS targets using R1 A1 Policy Management"
+    category: "a1_policy"
+    complexity: "high"
+    step_count: 4
+    includes_cleanup: true
+
+    intent_variations:
+      - "Create QoS policy for enterprise slice with {guaranteedBitRate} Mbps minimum"
+      - "Set up quality of service guarantees for slice {sliceId}"
+      - "Configure A1 policy for guaranteed throughput"
+      - "Create traffic prioritization policy for {cellId}"
+      - "I need to guarantee {guaranteedBitRate} Mbps for enterprise users"
+      - "Set up QoS targets for network slice"
+
+    context_parameters:
+      sliceId:
+        type: "object"
+        examples:
+          - {sst: 1, sd: "000001"}
+          - {sst: 2, sd: "000002"}
+      guaranteedBitRate:
+        type: "integer"
+        default: 10000
+        examples: [5000, 10000, 50000, 100000]
+      packetDelayBudget:
+        type: "integer"
+        default: 20
+        examples: [10, 20, 50, 100]
+      cellIds:
+        type: "array"
+        examples: [["NRCell-100", "NRCell-101"], ["cell-001"]]
+
+    steps:
+      - step: 1
+        api: "a1_policy_management.GET_rics"
+        uri: "/r1-a1-policy-management/v1/rics"
+        method: "GET"
+        purpose: "Get available Near-RT RICs"
+        reasoning: "First, identify which Near-RT RIC will enforce the policy"
+        expected_outputs:
+          nearRtRicId: "ric-001"
+          ricCapabilities: ["QOS_MANAGEMENT", "TRAFFIC_STEERING"]
+
+      - step: 2
+        api: "a1_policy_management.GET_policytypes"
+        uri: "/r1-a1-policy-management/v1/policytypes"
+        method: "GET"
+        purpose: "Get supported QoS policy types"
+        reasoning: "Find the policy type schema that matches QoS requirements"
+        expected_outputs:
+          policyTypeId: "ORAN_QoSTarget_1.0.0"
+          policySchema: "JSON schema for QoS policy"
+
+      - step: 3
+        api: "a1_policy_management.POST_policies"
+        uri: "/r1-a1-policy-management/v1/policies"
+        method: "POST"
+        purpose: "Create the QoS policy"
+        reasoning: "Create the A1 policy with QoS targets for the specified slice"
+        inputs:
+          nearRtRicId: "FROM step_1.nearRtRicId"
+          policyTypeId: "FROM step_2.policyTypeId"
+          cellIds: "FROM context.cellIds"
+          sliceId: "FROM context.sliceId"
+          guaranteedBitRate: "FROM context.guaranteedBitRate"
+          packetDelayBudget: "FROM context.packetDelayBudget"
+        request_body:
+          policyId: "policy-qos-001"
+          policyTypeId: "ORAN_QoSTarget_1.0.0"
+          nearRtRicId: "ric-001"
+          serviceAreaId: "sa-001"
+          policyData:
+            scope:
+              cellIdList: ["{cellIds}"]
+              sliceId: "{sliceId}"
+            qosObjectives:
+              guaranteedBitRate: "{guaranteedBitRate}"
+              packetDelayBudget: "{packetDelayBudget}"
+          transient: false
+          statusNotificationUri: "https://rapp.operator.com/callbacks/policy-status"
+        expected_outputs:
+          policyId: "policy-qos-001"
+
+      - step: 4
+        api: "a1_policy_management.GET_policy_status"
+        uri: "/r1-a1-policy-management/v1/policies/{policyId}/status"
+        method: "GET"
+        purpose: "Verify policy deployment"
+        reasoning: "Check that the policy was successfully deployed to the Near-RT RIC"
+        inputs:
+          policyId: "FROM step_3.policyId"
+        expected_outputs:
+          policyStatus: "ENFORCED"
+
+    cleanup:
+      - step: 5
+        api: "a1_policy_management.DELETE_policies"
+        uri: "/r1-a1-policy-management/v1/policies/{policyId}"
+        method: "DELETE"
+        purpose: "Remove policy when no longer needed"
+        inputs:
+          policyId: "FROM step_3.policyId"
+        trigger: "When policy objective achieved or requirements change"
+
+    expected_outcome: "A1 QoS policy active and enforced by Near-RT RIC, guaranteeing minimum throughput for the slice"
+    related_workflows: ["load_balancing_policy", "capacity_monitoring_setup"]
+
+  # -----------------------------------------------------------
+  # Load Balancing Policy (R1AP-Compliant)
+  # -----------------------------------------------------------
+  load_balancing_policy:
+    id: "wf_005"
+    name: "Load Balancing Policy Creation"
+    description: "Create A1 policy for load balancing across cells using R1 A1 Policy Management"
+    category: "a1_policy"
+    complexity: "high"
+    step_count: 4
+    includes_cleanup: true
+
+    intent_variations:
+      - "Create load balancing policy for cells {cellIds}"
+      - "Distribute traffic across neighbor cells"
+      - "Balance load between {cellId} and neighbors"
+      - "Set up MLB policy to reduce congestion"
+      - "Configure traffic steering for load distribution"
+
+    context_parameters:
+      cellIds:
+        type: "array"
+        examples: [["NRCell-100", "NRCell-101", "NRCell-102"]]
+      targetUtilization:
+        type: "integer"
+        default: 70
+        examples: [60, 70, 75]
+      hysteresis:
+        type: "integer"
+        default: 10
+        examples: [5, 10, 15]
+
+    steps:
+      - step: 1
+        api: "a1_policy_management.GET_rics"
+        uri: "/r1-a1-policy-management/v1/rics"
+        method: "GET"
+        purpose: "Get available Near-RT RICs"
+        reasoning: "Identify which RIC covers the target cells"
+        expected_outputs:
+          nearRtRicId: "ric-001"
+          ricCapabilities: ["LOAD_BALANCING", "TRAFFIC_STEERING"]
+
+      - step: 2
+        api: "a1_policy_management.GET_policytypes"
+        uri: "/r1-a1-policy-management/v1/policytypes"
+        method: "GET"
+        purpose: "Get load balancing policy types"
+        reasoning: "Find the MLB policy type schema"
+        expected_outputs:
+          policyTypeId: "ORAN_LoadBalancing_1.0.0"
+          policySchema: "JSON schema for load balancing policy"
+
+      - step: 3
+        api: "a1_policy_management.POST_policies"
+        uri: "/r1-a1-policy-management/v1/policies"
+        method: "POST"
+        purpose: "Create the load balancing policy"
+        reasoning: "Deploy the MLB policy with target utilization thresholds"
+        inputs:
+          nearRtRicId: "FROM step_1.nearRtRicId"
+          policyTypeId: "FROM step_2.policyTypeId"
+          cellIds: "FROM context.cellIds"
+          targetUtilization: "FROM context.targetUtilization"
+          hysteresis: "FROM context.hysteresis"
+        request_body:
+          policyId: "policy-mlb-001"
+          policyTypeId: "ORAN_LoadBalancing_1.0.0"
+          nearRtRicId: "ric-001"
+          policyData:
+            scope:
+              cellIdList: ["{cellIds}"]
+            loadBalancingObjectives:
+              targetUtilization: "{targetUtilization}"
+              hysteresis: "{hysteresis}"
+              balancingAlgorithm: "PROPORTIONAL"
+          transient: false
+          statusNotificationUri: "https://rapp.operator.com/callbacks/policy-status"
+        expected_outputs:
+          policyId: "policy-mlb-001"
+
+      - step: 4
+        api: "a1_policy_management.GET_policy_status"
+        uri: "/r1-a1-policy-management/v1/policies/{policyId}/status"
+        method: "GET"
+        purpose: "Verify policy deployment"
+        reasoning: "Confirm the MLB policy is active"
+        inputs:
+          policyId: "FROM step_3.policyId"
+        expected_outputs:
+          policyStatus: "ENFORCED"
+
+    cleanup:
+      - step: 5
+        api: "a1_policy_management.DELETE_policies"
+        uri: "/r1-a1-policy-management/v1/policies/{policyId}"
+        method: "DELETE"
+        purpose: "Remove policy when no longer needed"
+        inputs:
+          policyId: "FROM step_3.policyId"
+        trigger: "When load balancing objective achieved"
+
+    expected_outcome: "Load balancing policy active, distributing traffic across cells to maintain target utilization"
+    related_workflows: ["capacity_monitoring_setup", "qos_policy_creation"]
+
+  # -----------------------------------------------------------
+  # ML Model Deployment
+  # -----------------------------------------------------------
+  ml_model_deployment:
+    id: "wf_006"
+    name: "ML Model Deployment"
+    description: "Deploy AI/ML model for inference"
+    category: "ai_ml"
+    complexity: "high"
+    step_count: 4
+
+    intent_variations:
+      - "Deploy my traffic prediction model to the SMO"
+      - "Register and upload my {modelFramework} model"
+      - "I need to deploy a {modelName} model for inference"
+      - "Set up my ML model for real-time predictions"
+      - "Upload and activate my trained model"
+
+    context_parameters:
+      modelName:
+        type: "string"
+        examples: ["TrafficPredictor", "AnomalyDetector", "LoadForecaster"]
+      modelVersion:
+        type: "string"
+        examples: ["1.0.0", "2.0.0"]
+      modelFramework:
+        type: "string"
+        examples: ["PYTORCH", "TENSORFLOW", "ONNX"]
+      modelFormat:
+        type: "string"
+        default: "ONNX"
+        examples: ["ONNX", "SAVEDMODEL", "TORCHSCRIPT"]
+
+    steps:
+      - step: 1
+        api: "aiml_model_registration.POST_mlModels"
+        purpose: "Register the model in the catalog"
+        reasoning: "First, register the model metadata including name, version, and schemas"
+        inputs:
+          modelName: "FROM context.modelName"
+          modelVersion: "FROM context.modelVersion"
+          modelFramework: "FROM context.modelFramework"
+          modelFormat: "FROM context.modelFormat"
+        expected_outputs:
+          modelId: "model-001"
+
+      - step: 2
+        api: "aiml_model_storage.POST_artifacts"
+        purpose: "Upload the model artifact"
+        reasoning: "Upload the actual model binary/weights to storage"
+        inputs:
+          modelId: "FROM step_1"
+          artifactFormat: "FROM context.modelFormat"
+        expected_outputs:
+          artifactId: "artifact-001"
+
+      - step: 3
+        api: "aiml_performance_monitoring.POST_subscriptions"
+        purpose: "Set up performance monitoring"
+        reasoning: "Configure monitoring to track model accuracy and latency"
+        inputs:
+          modelId: "FROM step_1"
+          performanceMetrics: ["accuracy", "latency", "inferenceCount", "errorRate"]
+
+      - step: 4
+        api: "aiml_model_inference.GET_capabilities"
+        purpose: "Verify inference readiness"
+        reasoning: "Confirm the model is available for inference"
+
+    expected_outcome: "ML model deployed, stored, and ready for inference with performance monitoring active"
+    related_workflows: ["ml_model_training", "ml_inference"]
+
+  # -----------------------------------------------------------
+  # ML Model Training
+  # -----------------------------------------------------------
+  ml_model_training:
+    id: "wf_007"
+    name: "ML Model Training"
+    description: "Train or retrain ML model with new data"
+    category: "ai_ml"
+    complexity: "high"
+    step_count: 4
+
+    intent_variations:
+      - "Train my model with the new dataset"
+      - "Retrain {modelName} with updated parameters"
+      - "Start training job for model {modelId}"
+      - "I need to improve my model accuracy"
+      - "Run training with {epochs} epochs"
+
+    context_parameters:
+      modelId:
+        type: "string"
+        examples: ["model-001"]
+      trainingDataUri:
+        type: "string"
+        examples: ["http://data-lake.example.com/datasets/traffic-data-v2"]
+      hyperparameters:
+        type: "object"
+        examples:
+          - {learningRate: 0.001, batchSize: 32, epochs: 100}
+          - {learningRate: 0.0001, batchSize: 64, epochs: 200}
+
+    steps:
+      - step: 1
+        api: "aiml_training_capability.GET_capabilities"
+        purpose: "Check available training resources"
+        reasoning: "Verify that training infrastructure is available"
+
+      - step: 2
+        api: "aiml_model_training.POST_training_jobs"
+        purpose: "Start training job"
+        reasoning: "Create and start the training job with specified hyperparameters"
+        inputs:
+          modelId: "FROM context.modelId"
+          trainingDataUri: "FROM context.trainingDataUri"
+          hyperparameters: "FROM context.hyperparameters"
+        expected_outputs:
+          trainingJobId: "training-001"
+
+      - step: 3
+        api: "aiml_model_training.GET_training_jobs"
+        purpose: "Monitor training progress"
+        reasoning: "Check training status until completion"
+        inputs:
+          trainingJobId: "FROM step_2"
+        expected_outputs:
+          status: "COMPLETED"
+          metrics: {loss: 0.05, accuracy: 0.95}
+
+      - step: 4
+        api: "aiml_model_storage.POST_artifacts"
+        purpose: "Store trained model"
+        reasoning: "Save the newly trained model artifact"
+        inputs:
+          modelId: "FROM context.modelId"
+
+    expected_outcome: "Model training completed with improved accuracy, new artifact stored"
+
+  # -----------------------------------------------------------
+  # rApp Onboarding
+  # -----------------------------------------------------------
+  rapp_onboarding:
+    id: "wf_008"
+    name: "rApp Onboarding"
+    description: "Complete rApp registration and API publishing"
+    category: "rapp_management"
+    complexity: "medium"
+    step_count: 4
+
+    intent_variations:
+      - "Onboard my rApp to the SMO"
+      - "Register rApp {rAppName} with vendor {vendor}"
+      - "Deploy and register my application"
+      - "I need to onboard a new rApp"
+      - "Set up my rApp in the SMO"
+
+    context_parameters:
+      rAppName:
+        type: "string"
+        examples: ["rApp-TrafficOptimizer", "rApp-AnomalyDetector"]
+      vendor:
+        type: "string"
+        examples: ["Nokia", "Ericsson", "Viavi", "Custom"]
+      rAppType:
+        type: "string"
+        examples: ["SERVICE_PRODUCER", "SERVICE_CONSUMER", "HYBRID"]
+
+    steps:
+      - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Get SMO bootstrap information"
+        reasoning: "Discover available service endpoints before registration"
+        expected_outputs:
+          apiRoot: "https://smo.example.com"
+          serviceEndpoints: {}
+
+      - step: 2
+        api: "rapp_registration.POST_rapps"
+        purpose: "Register the rApp"
+        reasoning: "Register rApp metadata including vendor, type, and requirements"
+        inputs:
+          rAppName: "FROM context.rAppName"
+          vendor: "FROM context.vendor"
+          rAppType: "FROM context.rAppType"
+        expected_outputs:
+          rAppId: "rapp-001"
+
+      - step: 3
+        api: "service_registration.POST_service_apis"
+        purpose: "Publish rApp service APIs"
+        reasoning: "Make rApp's APIs discoverable by other applications"
+        inputs:
+          rAppId: "FROM step_2"
+
+      - step: 4
+        api: "rapp_registration.GET_rapp_status"
+        purpose: "Verify registration status"
+        reasoning: "Confirm rApp is successfully registered and operational"
+        inputs:
+          rAppId: "FROM step_2"
+        expected_outputs:
+          status: "ACTIVE"
+
+    expected_outcome: "rApp registered, APIs published, and operational in the SMO"
+
+  # -----------------------------------------------------------
+  # NOTE: O1 and O2 Workflows Removed
+  # -----------------------------------------------------------
+  # The following workflows have been REMOVED as they use O1/O2 APIs:
+  #   - alarm_investigation (O1: fault_management)
+  #   - configuration_update (O1: configuration_management)
+  #   - performance_analysis (O1: performance_management)
+  #   - ocloud_resource_query (O2: o2_infrastructure_management)
+  #   - nf_deployment (O2: o2_deployment_management)
+  #
+  # For O1 workflows, see: o1_workflows.yaml (if needed)
+  # For O2 workflows, see: o2_workflows.yaml (if needed)
+  # -----------------------------------------------------------
+
+  # -----------------------------------------------------------
+  # EI Data Subscription (R1AP-Compliant)
+  # -----------------------------------------------------------
+  ei_data_subscription:
+    id: "wf_009"
+    name: "Enrichment Information Subscription"
+    description: "Subscribe to A1 enrichment information data using R1 A1-EI APIs"
+    category: "a1_services"
+    complexity: "medium"
+    step_count: 3
+    includes_cleanup: true
+
+    intent_variations:
+      - "Subscribe to UE location data"
+      - "Get enrichment information for {eiTypeId}"
+      - "I need EI data for my rApp"
+      - "Set up enrichment data subscription"
+      - "Get real-time UE context information"
+
+    context_parameters:
+      eiTypeId:
+        type: "string"
+        examples: ["ue-location-data", "ue-trajectory-data"]
+
+    steps:
+      - step: 1
+        api: "a1_enrichment_information.GET_eitypes"
+        uri: "/r1-a1-ei/v1/eitypes"
+        method: "GET"
+        purpose: "Discover EI types"
+        reasoning: "Find available enrichment information types"
+        expected_outputs:
+          eiTypeId: "FROM context.eiTypeId"
+          eiJobParametersSchema: "JSON schema for EI job"
+
+      - step: 2
+        api: "a1_enrichment_information.POST_eijobs"
+        uri: "/r1-a1-ei/v1/eijobs"
+        method: "POST"
+        purpose: "Create EI job"
+        reasoning: "Subscribe to enrichment information stream"
+        inputs:
+          eiTypeId: "FROM step_1.eiTypeId"
+        request_body:
+          eiTypeId: "{eiTypeId}"
+          jobDefinition:
+            ueIdList: ["imsi-310150123456789"]
+          targetUri: "https://rapp.operator.com/callbacks/ei-data"
+          owner: "analytics-rapp"
+        expected_outputs:
+          eiJobId: "ei-job-001"
+          status: "RUNNING"
+
+    cleanup:
+      - step: 3
+        api: "a1_enrichment_information.DELETE_eijobs"
+        uri: "/r1-a1-ei/v1/eijobs/{eiJobId}"
+        method: "DELETE"
+        purpose: "Remove EI job when no longer needed"
+        inputs:
+          eiJobId: "FROM step_2.eiJobId"
+        trigger: "When enrichment data no longer required"
+
+    expected_outcome: "Enrichment information subscription active, receiving UE context data via callback"
+    related_workflows: ["coverage_monitoring_setup", "qos_policy_creation"]
+
+  # -----------------------------------------------------------
+  # ML Inference Request (R1AP-Compliant)
+  # -----------------------------------------------------------
+  ml_inference_request:
+    id: "wf_010"
+    name: "ML Inference Request"
+    description: "Request prediction from deployed ML model using R1 AI/ML APIs"
+    category: "ai_ml"
+    complexity: "easy"
+    step_count: 2
+
+    intent_variations:
+      - "Get prediction from {modelName}"
+      - "Run inference on my data"
+      - "Use the traffic model to predict load"
+      - "What does the model predict for this input?"
+      - "Request real-time prediction"
+
+    context_parameters:
+      modelName:
+        type: "string"
+        examples: ["TrafficPredictor"]
+      inputData:
+        type: "object"
+        examples:
+          - {ueMetrics: [1.2, 3.4, 5.6], cellMetrics: {prbUtilization: 75, activeUsers: 150}}
+
+    steps:
+      - step: 1
+        api: "aiml_model_discovery.GET_mlModels"
+        uri: "/r1-aiml/v1/mlModels"
+        method: "GET"
+        purpose: "Find the model"
+        reasoning: "Locate the model by name"
+        query_params:
+          modelName: "{modelName}"
+        expected_outputs:
+          modelId: "model-001"
+
+      - step: 2
+        api: "aiml_model_inference.POST_inference_jobs"
+        uri: "/r1-aiml/v1/mlInferenceJobs"
+        method: "POST"
+        purpose: "Request inference"
+        reasoning: "Submit input data for prediction"
+        inputs:
+          modelId: "FROM step_1.modelId"
+          inputData: "FROM context.inputData"
+        request_body:
+          modelId: "{modelId}"
+          inputData: "{inputData}"
+          inferenceMode: "SYNC"
+          timeout: 5000
+        expected_outputs:
+          inferenceJobId: "inference-001"
+          prediction: {predictedLoad: 85.5}
+
+    expected_outcome: "Prediction returned from ML model"
+    related_workflows: ["ml_model_deployment", "capacity_monitoring_setup"]
+
+# ============================================================
+# WORKFLOW COMBINATIONS - Complex multi-workflow scenarios
+# ============================================================
+workflow_combinations:
+  diagnose_and_remediate_congestion:
+    name: "Diagnose and Remediate Cell Congestion"
+    description: "End-to-end workflow from diagnosis to policy deployment"
+    workflows_in_sequence:
+      - capacity_monitoring_setup
+      - load_balancing_policy
+    trigger_condition: "prb_utilization_dl_pct > 85"
+
+  predictive_optimization:
+    name: "Predictive Network Optimization"
+    description: "Use ML prediction to proactively deploy policies"
+    workflows_in_sequence:
+      - ml_inference_request
+      - load_balancing_policy
+    trigger_condition: "predicted_load > 80"
+
+  complete_rapp_deployment:
+    name: "Complete rApp Deployment with ML"
+    description: "Full rApp onboarding with ML model deployment"
+    workflows_in_sequence:
+      - rapp_onboarding
+      - ml_model_deployment
+      - coverage_monitoring_setup

@@ -1,0 +1,652 @@
+# r1_domain_knowledge.yaml
+# O-RAN Domain Knowledge for TeleQnA-style Training Samples
+# =========================================================================
+#
+# Reference Specifications (latest as of late 2024):
+#   - O-RAN.WG2.R1AP-v06.00 (R1 Application Protocols)
+#   - O-RAN.WG2.R1GAP-v09.00 (R1 General Aspects & Principles)
+#   - O-RAN.WG2.R1TD-v03.00 (R1 Type Definitions)
+#   - O-RAN.WG2.Non-RT-RIC-ARCH-v06.00 (Non-RT RIC Architecture)
+#
+# This file defines O-RAN concepts, interface comparisons, and domain
+# explanations for generating domain knowledge Q&A training samples.
+# =========================================================================
+
+metadata:
+  version: "1.0.0"
+  description: "O-RAN domain knowledge for training dataset generation"
+  gsma_benchmark: "TeleQnA"
+
+# ============================================================
+# INTERFACE COMPARISONS
+# ============================================================
+comparisons:
+  # -----------------------------------------------------------
+  a1_vs_o1:
+    id: "cmp_001"
+    question_patterns:
+      - "When should I use the A1 interface versus the O1 interface?"
+      - "What's the difference between A1 and O1?"
+      - "A1 vs O1 - which one to use?"
+      - "Should I use A1 or O1 for this?"
+      - "Compare A1 and O1 interfaces"
+
+    summary: "Use A1 for real-time, intent-based policy control via the Near-RT RIC. Use O1 for static configuration, fault management, and performance data collection."
+
+    detailed_explanation:
+      a1_interface:
+        definition: "The A1 interface connects the Non-RT RIC (in SMO) to the Near-RT RIC for policy-based control"
+        control_loop: "10ms to 1 second"
+        key_functions:
+          - "Policy management (QoS targets, traffic steering rules)"
+          - "Enrichment Information delivery to Near-RT RIC"
+          - "ML model deployment coordination"
+        use_cases:
+          - "Dynamic traffic steering based on current load"
+          - "QoS optimization for specific slices or services"
+          - "Load balancing across cells in real-time"
+          - "Temporary policies that adapt to network conditions"
+        example:
+          scenario: "Enterprise customer needs guaranteed throughput during business hours"
+          solution: "Create A1 policy with QoS targets, Near-RT RIC enforces in real-time"
+          api: "POST /r1-a1-policy-management/v1/policies"
+
+      o1_interface:
+        definition: "The O1 interface connects the SMO to O-RAN network functions for OAM operations"
+        control_loop: "Minutes to hours (not real-time)"
+        key_functions:
+          - "FCAPS - Fault, Configuration, Accounting, Performance, Security"
+          - "Configuration management via NETCONF/RESTCONF"
+          - "Performance measurement collection (PM jobs)"
+          - "Alarm management and subscription"
+        use_cases:
+          - "Initial cell parameter configuration"
+          - "Permanent changes to transmit power, antenna settings"
+          - "PM data collection for analytics"
+          - "Alarm monitoring and acknowledgment"
+        example:
+          scenario: "Need to change maximum transmit power for a cell"
+          solution: "Use O1 configuration management to update cell parameters"
+          api: "PUT /r1-oam/v1/managedElements/{id}"
+
+    decision_framework:
+      use_a1_when:
+        - "Need changes to take effect in < 1 second"
+        - "Want intent-based control (declare goals, not exact parameters)"
+        - "Policy should adapt to real-time network conditions"
+        - "Change is temporary or conditional"
+        - "Optimization decisions that Near-RT RIC can handle autonomously"
+      use_o1_when:
+        - "Configuring static network element parameters"
+        - "Change is permanent and doesn't need real-time adaptation"
+        - "Collecting performance measurement data"
+        - "Managing faults and alarms"
+        - "Need exact parameter values (not intent-based)"
+
+    common_mistakes:
+      - mistake: "Using O1 to configure per-UE QoS"
+        why_wrong: "Per-UE decisions need real-time control via A1/xApps"
+        correct_approach: "Use A1 policy with QoS targets"
+      - mistake: "Using A1 to change cell transmit power"
+        why_wrong: "Tx power is a static configuration, not a real-time decision"
+        correct_approach: "Use O1 configuration management"
+
+    related_concepts: ["near_rt_ric", "non_rt_ric", "xapp", "rapp"]
+    spec_references: ["O-RAN.WG2.A1AP", "O-RAN.WG10.O1"]
+
+  # -----------------------------------------------------------
+  rapp_vs_xapp:
+    id: "cmp_002"
+    question_patterns:
+      - "What's the difference between rApp and xApp?"
+      - "When should I build an rApp vs an xApp?"
+      - "rApp vs xApp - which is better for my use case?"
+      - "Compare rApp and xApp capabilities"
+
+    summary: "xApps run in the Near-RT RIC for real-time control (10ms-1s), while rApps run in the SMO/Non-RT RIC for slower analytics and policy management (>1s)."
+
+    detailed_explanation:
+      xapp:
+        definition: "Application running in the Near-RT RIC, accessing E2 interface for real-time RAN control"
+        location: "Near-RT RIC"
+        control_loop: "10ms to 1 second"
+        access_to:
+          - "E2 interface to RAN nodes"
+          - "Real-time UE and cell metrics"
+          - "Direct control actions (handover, scheduling)"
+        use_cases:
+          - "Per-UE handover decisions"
+          - "Real-time traffic steering"
+          - "Interference mitigation"
+          - "Scheduler optimization"
+        constraints:
+          - "Must be low-latency"
+          - "Limited to Near-RT RIC resources"
+          - "Cannot access external systems directly"
+
+      rapp:
+        definition: "Application running in the SMO/Non-RT RIC, using R1/A1 interfaces for policy-based management"
+        location: "SMO or Non-RT RIC"
+        control_loop: "> 1 second"
+        access_to:
+          - "R1 interface to SMO services"
+          - "A1 interface to Near-RT RIC"
+          - "O1 interface for OAM"
+          - "External AI/ML systems"
+        use_cases:
+          - "Network-wide optimization"
+          - "Long-term trend analysis"
+          - "Policy creation and lifecycle"
+          - "ML model management"
+          - "Multi-vendor coordination"
+        advantages:
+          - "Can use heavy ML/AI"
+          - "Access to historical data"
+          - "Can coordinate across RICs"
+
+    decision_framework:
+      build_xapp_when:
+        - "Need sub-second response time"
+        - "Decision requires real-time UE-level data"
+        - "Direct RAN control action needed"
+        - "Per-cell or per-UE granularity"
+      build_rapp_when:
+        - "Analytics spans multiple cells or sites"
+        - "Heavy ML processing required"
+        - "Need to create/manage policies"
+        - "Integration with external systems"
+        - "Historical data analysis"
+
+    spec_references: ["O-RAN.WG2.Non-RT-RIC", "O-RAN.WG3.Near-RT-RIC"]
+
+  # -----------------------------------------------------------
+  data_subscription_vs_pm_job:
+    id: "cmp_003"
+    question_patterns:
+      - "Should I use data subscription or PM job?"
+      - "What's the difference between data subscription and PM job?"
+      - "When to use DME vs O1 for performance data?"
+
+    summary: "Use Data Subscription (R1-DME) for real-time streaming data with flexible delivery. Use PM Jobs (O1) for standardized 3GPP measurements with file-based delivery."
+
+    detailed_explanation:
+      data_subscription:
+        definition: "R1 Data Management service for real-time data streaming"
+        interface: "R1-DME"
+        delivery_methods: ["PUSH", "PULL", "STREAMING"]
+        flexibility: "High - custom data types, flexible schemas"
+        latency: "Real-time to near-real-time"
+        use_cases:
+          - "Real-time KPI monitoring"
+          - "Custom rApp-specific metrics"
+          - "Event-driven data delivery"
+          - "Kafka streaming integration"
+
+      pm_job:
+        definition: "O1 Performance Management for 3GPP-defined measurements"
+        interface: "O1"
+        delivery_methods: ["File-based", "Stream to target"]
+        flexibility: "Standard - 3GPP defined measurement types"
+        latency: "Periodic (15min, 1hr granularity typical)"
+        use_cases:
+          - "Official PM counters for reporting"
+          - "Historical trending and analysis"
+          - "Regulatory compliance data"
+          - "Standardized vendor-neutral metrics"
+
+    decision_framework:
+      use_data_subscription_when:
+        - "Need real-time streaming"
+        - "Custom metric types"
+        - "Event-driven delivery"
+        - "Integration with Kafka"
+      use_pm_job_when:
+        - "Need 3GPP standardized measurements"
+        - "Historical analysis"
+        - "File-based processing"
+        - "Vendor-neutral metrics"
+
+# ============================================================
+# O-RAN CONCEPTS
+# ============================================================
+concepts:
+  # -----------------------------------------------------------
+  near_rt_ric:
+    id: "con_001"
+    name: "Near-RT RIC"
+    full_name: "Near-Real-Time RAN Intelligent Controller"
+
+    question_patterns:
+      - "What is the Near-RT RIC?"
+      - "Explain Near-Real-Time RAN Intelligent Controller"
+      - "What does Near-RT RIC do?"
+      - "What's the role of Near-RT RIC in O-RAN?"
+
+    definition: "A logical function that enables near-real-time control and optimization of RAN elements and resources via fine-grained data collection and actions over the E2 interface"
+
+    explanation: |
+      The Near-RT RIC is a key component of the O-RAN architecture that sits between the
+      Non-RT RIC/SMO and the RAN nodes (O-DU, O-CU). It operates in control loops of
+      10ms to 1 second, enabling real-time optimization that's faster than traditional
+      SON but doesn't require changes to the RAN scheduler.
+
+      Key capabilities:
+      1. Hosts xApps that implement optimization logic
+      2. Collects real-time data from RAN via E2 interface
+      3. Receives policies from Non-RT RIC via A1 interface
+      4. Makes per-UE and per-cell decisions
+
+    key_interfaces:
+      - interface: "E2"
+        connects_to: "O-DU, O-CU"
+        purpose: "Real-time RAN data and control"
+      - interface: "A1"
+        connects_to: "Non-RT RIC"
+        purpose: "Policy guidance and ML models"
+      - interface: "O1"
+        connects_to: "SMO"
+        purpose: "OAM operations"
+
+    control_loop: "10ms to 1 second"
+
+    use_cases:
+      - "Traffic steering between cells"
+      - "QoS optimization per UE"
+      - "Interference management"
+      - "Handover optimization"
+      - "Load balancing"
+
+    related_concepts: ["non_rt_ric", "xapp", "e2_interface", "a1_interface"]
+    spec_references: ["O-RAN.WG3.RICARCH", "O-RAN.WG3.E2AP"]
+
+  # -----------------------------------------------------------
+  non_rt_ric:
+    id: "con_002"
+    name: "Non-RT RIC"
+    full_name: "Non-Real-Time RAN Intelligent Controller"
+
+    question_patterns:
+      - "What is the Non-RT RIC?"
+      - "Explain Non-Real-Time RAN Intelligent Controller"
+      - "What's the difference between Non-RT RIC and SMO?"
+      - "What functions are in the Non-RT RIC?"
+
+    definition: "A logical function within the SMO that provides non-real-time control and optimization of RAN elements via policies and enrichment information"
+
+    explanation: |
+      The Non-RT RIC is part of the Service Management and Orchestration (SMO) layer.
+      It operates in control loops greater than 1 second, focusing on:
+      - Policy-based guidance to Near-RT RIC
+      - ML model training and deployment
+      - Network-wide optimization decisions
+      - Integration with external AI/ML systems
+
+      Unlike the Near-RT RIC, it doesn't have direct access to real-time RAN data
+      but works with aggregated data and longer-term trends.
+
+    key_interfaces:
+      - interface: "A1"
+        connects_to: "Near-RT RIC"
+        purpose: "Policy deployment, EI delivery"
+      - interface: "R1"
+        connects_to: "rApps"
+        purpose: "Service exposure to applications"
+      - interface: "O1"
+        connects_to: "RAN, Near-RT RIC"
+        purpose: "OAM operations"
+      - interface: "O2"
+        connects_to: "O-Cloud"
+        purpose: "Infrastructure management"
+
+    control_loop: "> 1 second"
+
+    key_functions:
+      - "A1 policy management"
+      - "Enrichment Information coordination"
+      - "ML model lifecycle management"
+      - "rApp hosting"
+      - "Data analytics"
+
+    related_concepts: ["near_rt_ric", "rapp", "a1_interface", "smo"]
+    spec_references: ["O-RAN.WG2.Non-RT-RIC-ARCH"]
+
+  # -----------------------------------------------------------
+  smo:
+    id: "con_003"
+    name: "SMO"
+    full_name: "Service Management and Orchestration"
+
+    question_patterns:
+      - "What is the SMO in O-RAN?"
+      - "Explain Service Management and Orchestration"
+      - "What's the role of SMO?"
+      - "What does SMO do?"
+
+    definition: "The management and orchestration layer that provides lifecycle management of O-RAN network functions and supports the Non-RT RIC"
+
+    explanation: |
+      The SMO is the management brain of the O-RAN architecture. It handles:
+      - Network function lifecycle management
+      - Configuration management via O1
+      - Infrastructure management via O2
+      - Hosts the Non-RT RIC functionality
+      - Exposes R1 interface to rApps
+
+    key_functions:
+      - "FCAPS (Fault, Configuration, Accounting, Performance, Security)"
+      - "Network function deployment"
+      - "Service orchestration"
+      - "Non-RT RIC hosting"
+      - "rApp management"
+
+    related_concepts: ["non_rt_ric", "o1_interface", "o2_interface", "r1_interface"]
+
+  # -----------------------------------------------------------
+  a1_policy:
+    id: "con_004"
+    name: "A1 Policy"
+
+    question_patterns:
+      - "What is an A1 policy?"
+      - "How do A1 policies work?"
+      - "What types of A1 policies exist?"
+      - "How to create an A1 policy?"
+
+    definition: "A declarative intent that guides Near-RT RIC behavior without specifying exact implementation"
+
+    explanation: |
+      A1 policies are intent-based - you declare what you want (e.g., "maintain 10Mbps
+      for slice X") rather than how to achieve it. The Near-RT RIC and its xApps
+      determine the best way to fulfill the policy.
+
+      Policy lifecycle:
+      1. rApp creates policy via R1 interface
+      2. Non-RT RIC translates and forwards via A1
+      3. Near-RT RIC receives and enforces
+      4. Status reported back to rApp
+
+    policy_types:
+      - type: "QoS Target"
+        description: "Specify quality objectives (throughput, latency)"
+        example: "Guarantee 50Mbps for enterprise slice"
+      - type: "Traffic Steering"
+        description: "Guide traffic distribution across cells"
+        example: "Prefer Cell-A for video traffic"
+      - type: "Load Balancing"
+        description: "Balance load across cells"
+        example: "Keep PRB utilization below 70%"
+      - type: "Handover"
+        description: "Influence handover decisions"
+        example: "Avoid handovers to congested cells"
+
+    key_attributes:
+      - "policyTypeId - identifies the policy schema"
+      - "nearRtRicId - target RIC"
+      - "scope - cells, slices, UEs affected"
+      - "policyData - the actual policy parameters"
+      - "transient - whether policy persists across restarts"
+
+    related_concepts: ["near_rt_ric", "a1_interface", "policy_type"]
+    api_reference: "a1_policy_management"
+
+  # -----------------------------------------------------------
+  dme_type:
+    id: "con_005"
+    name: "DME Type"
+    full_name: "Data Management and Exposure Information Type"
+
+    question_patterns:
+      - "What is a DME type?"
+      - "How does data management work in R1?"
+      - "What's an information type?"
+      - "How do I discover available data types?"
+
+    definition: "A schema definition for a category of data that can be produced or consumed via the R1 Data Management service"
+
+    explanation: |
+      DME types define the structure of data available through R1. Before subscribing
+      to data, you discover what types are available. Each type has:
+      - Unique identifier (infoTypeId)
+      - JSON schema for the data format
+      - Supported delivery methods
+      - Available filters
+
+    examples:
+      - infoTypeId: "oran-dmf:ue-metrics-v1"
+        description: "Per-UE measurement data"
+        measurements: ["rsrp_dbm", "rsrq_db", "throughput"]
+      - infoTypeId: "oran-dmf:cell-kpis-v1"
+        description: "Cell-level KPIs"
+        measurements: ["prb_utilization", "active_ues", "handover_rate"]
+
+    lifecycle:
+      - "Producer registers DME type"
+      - "Consumer discovers available types"
+      - "Consumer creates subscription (info job)"
+      - "Data delivered via configured method"
+
+    related_concepts: ["data_subscription", "data_discovery"]
+    api_reference: "data_discovery"
+
+  # -----------------------------------------------------------
+  kpi_thresholds:
+    id: "con_006"
+    name: "KPI Thresholds"
+
+    question_patterns:
+      - "What are normal KPI values?"
+      - "When is RSRP considered poor?"
+      - "What PRB utilization indicates congestion?"
+      - "How to interpret network KPIs?"
+
+    definition: "Reference values for determining network health based on KPI measurements"
+
+    coverage_kpis:
+      rsrp_dbm:
+        name: "Reference Signal Received Power"
+        unit: "dBm"
+        thresholds:
+          excellent: "> -80"
+          good: "-80 to -90"
+          fair: "-90 to -100"
+          poor: "-100 to -110"
+          no_coverage: "< -110"
+        interpretation: "Measures signal strength. Poor RSRP indicates coverage issues."
+
+      rsrq_db:
+        name: "Reference Signal Received Quality"
+        unit: "dB"
+        thresholds:
+          excellent: "> -10"
+          good: "-10 to -15"
+          fair: "-15 to -20"
+          poor: "< -20"
+        interpretation: "Measures signal quality including interference. Poor RSRQ may indicate interference."
+
+      sinr_db:
+        name: "Signal to Interference plus Noise Ratio"
+        unit: "dB"
+        thresholds:
+          excellent: "> 20"
+          good: "13 to 20"
+          fair: "0 to 13"
+          poor: "< 0"
+        interpretation: "Measures signal quality relative to interference. Critical for throughput."
+
+    capacity_kpis:
+      prb_utilization_dl_pct:
+        name: "Downlink PRB Utilization"
+        unit: "percent"
+        thresholds:
+          normal: "< 70"
+          warning: "70 to 85"
+          critical: "> 85"
+        interpretation: "High PRB utilization indicates capacity congestion."
+
+      active_ues:
+        name: "Active UE Count"
+        interpretation: "Compare to cell capacity. High count with low throughput indicates congestion."
+
+      throughput_dl_mbps_avg:
+        name: "Average Downlink Throughput"
+        unit: "Mbps"
+        interpretation: "Compare to expected values. Low throughput with good RF indicates capacity issue."
+
+    diagnostic_rules:
+      - condition: "RSRP < -100 AND RSRQ < -15"
+        diagnosis: "coverage_issue"
+        action: "Check antenna configuration, consider cell expansion"
+      - condition: "RSRP > -90 AND PRB > 85%"
+        diagnosis: "capacity_congestion"
+        action: "Implement load balancing, consider capacity expansion"
+      - condition: "RSRP > -90 AND SINR < 5 AND PRB < 50%"
+        diagnosis: "interference_issue"
+        action: "Check PCI planning, neighbor relations"
+
+    spec_references: ["3GPP TS 38.215", "3GPP TS 28.552"]
+
+  # -----------------------------------------------------------
+  enrichment_information:
+    id: "con_007"
+    name: "Enrichment Information (EI)"
+
+    question_patterns:
+      - "What is Enrichment Information?"
+      - "How does EI work in O-RAN?"
+      - "What's the difference between EI and regular data?"
+      - "When to use Enrichment Information?"
+
+    definition: "Supplementary data provided to the Near-RT RIC via A1 to enhance its decision-making capabilities"
+
+    explanation: |
+      Enrichment Information provides context that helps xApps make better decisions.
+      Unlike A1 policies (which are directives), EI is informational data.
+
+      Examples:
+      - UE location predictions
+      - Traffic forecasts
+      - Weather data affecting RF
+      - Event schedules (sports, concerts)
+
+    flow:
+      - "EI producer registers type via A1-EI"
+      - "Near-RT RIC discovers available EI types"
+      - "Near-RT RIC subscribes to relevant EI"
+      - "EI delivered to xApps for enhanced decisions"
+
+    use_cases:
+      - "Predictive handover based on UE trajectory"
+      - "Proactive load balancing before events"
+      - "Weather-aware capacity planning"
+
+    related_concepts: ["a1_interface", "near_rt_ric", "xapp"]
+    api_reference: "a1_enrichment_information"
+
+  # -----------------------------------------------------------
+  capif:
+    id: "con_008"
+    name: "CAPIF"
+    full_name: "Common API Framework"
+
+    question_patterns:
+      - "What is CAPIF?"
+      - "How does service discovery work in R1?"
+      - "What's the Common API Framework?"
+      - "How do rApps discover services?"
+
+    definition: "3GPP-defined framework for API publishing, discovery, and security in service-based architectures"
+
+    explanation: |
+      CAPIF provides a standardized way for services to register and discover each other.
+      In O-RAN R1, CAPIF is used for:
+      - Service registration (publishing APIs)
+      - Service discovery (finding available APIs)
+      - Security (authentication, authorization)
+      - Event notifications
+
+    key_apis:
+      - "capif-publish - Register service APIs"
+      - "capif-discover - Find available services"
+      - "capif-events - Subscribe to service events"
+      - "capif-security - Security operations"
+
+    related_concepts: ["service_registration", "service_discovery"]
+    spec_references: ["3GPP TS 29.222"]
+
+# ============================================================
+# SERVICE CATEGORY EXPLANATIONS
+# ============================================================
+service_categories:
+  service_management:
+    section: "5.1"
+    name: "Service Management and Exposure"
+    description: "APIs for service registration, discovery, and bootstrap"
+    key_apis: ["bootstrap", "service_registration", "service_discovery"]
+    when_to_use: "Starting rApp development, publishing APIs, finding services"
+
+  data_management:
+    section: "5.2"
+    name: "Data Management and Exposure"
+    description: "APIs for subscribing to and managing network data"
+    key_apis: ["data_discovery", "data_subscription", "data_request", "data_offer"]
+    when_to_use: "Need KPI data, setting up monitoring, historical analysis"
+
+  a1_services:
+    section: "5.3"
+    name: "A1 Services"
+    description: "APIs for policy management and enrichment information"
+    key_apis: ["a1_policy_management", "a1_enrichment_information"]
+    when_to_use: "Creating policies, QoS management, sending context to Near-RT RIC"
+
+  ran_oam:
+    section: "5.4"
+    name: "RAN OAM Services"
+    description: "APIs for network element management, faults, and configuration"
+    key_apis: ["network_information", "fault_management", "performance_management", "configuration_management"]
+    when_to_use: "Network topology, alarm handling, configuration changes, PM jobs"
+
+  o2_services:
+    section: "5.5"
+    name: "O2 Services"
+    description: "APIs for O-Cloud infrastructure and deployment management"
+    key_apis: ["o2_infrastructure_management", "o2_deployment_management"]
+    when_to_use: "Infrastructure queries, NF deployment, resource management"
+
+  ai_ml:
+    section: "5.6"
+    name: "AI/ML Workflow Services"
+    description: "APIs for ML model lifecycle management"
+    key_apis: ["aiml_model_registration", "aiml_model_storage", "aiml_model_training", "aiml_model_inference"]
+    when_to_use: "ML model deployment, training, inference, monitoring"
+
+  rapp_management:
+    section: "5.7"
+    name: "rApp Management"
+    description: "APIs for rApp lifecycle management"
+    key_apis: ["rapp_registration"]
+    when_to_use: "Registering rApps, managing rApp lifecycle"
+
+# ============================================================
+# FAQ - COMMON QUESTIONS
+# ============================================================
+faq:
+  - question: "Can I run heavy ML in the Near-RT RIC?"
+    answer: "No, Near-RT RIC has strict latency requirements (<1s). Heavy ML should run in rApps (Non-RT RIC) and send policies or EI to the Near-RT RIC."
+
+  - question: "Do I need to use all R1 APIs?"
+    answer: "No, use only what you need. Most rApps start with bootstrap, data subscription, and potentially A1 policy management."
+
+  - question: "Can I access individual UE data via R1?"
+    answer: "Per-UE data is typically aggregated. For real-time per-UE control, you need an xApp in the Near-RT RIC with E2 access."
+
+  - question: "How do I handle multiple vendors?"
+    answer: "R1 provides vendor-agnostic APIs. For vendor-specific extensions, use the RAG system to map canonical requests to vendor APIs."
+
+  - question: "What's the difference between transient and persistent policies?"
+    answer: "Transient policies are lost on Near-RT RIC restart. Persistent policies survive restarts. Use transient for temporary optimizations."
+
+  - question: "How often should I poll for data vs subscribe?"
+    answer: "Prefer subscriptions (PUSH) over polling. Subscriptions reduce load and provide faster updates. Poll only for on-demand queries."
+
+  - question: "Can rApps communicate directly with each other?"
+    answer: "Yes, rApps can publish and consume each other's APIs via CAPIF service discovery. This enables rApp composition."

@@ -1,12 +1,13 @@
 # r1_schemas.yaml
 # JSON Schema definitions for O-RAN R1 API payloads
-# Aligned with 3GPP CAPIF (TS 29.222) and O-RAN R1GAP/R1AP specifications
+# Aligned with O-RAN.WG2.R1AP-v06.00, O-RAN.WG2.R1TD-v03.00, O-RAN.WG2.R1GAP-v09.00
+# and 3GPP CAPIF (TS 29.222)
 # =========================================================================
 #
 # Schema Reference:
 #   - Service Publishing: ServiceAPIDescription (3GPP TS 29.222)
-#   - A1 Policy: A1Policy (O-RAN.WG2.R1AP)
-#   - Data Management: InfoJob, InfoType (O-RAN R1-DME)
+#   - A1 Policy: A1Policy (O-RAN.WG2.R1AP-v06.00)
+#   - Data Management: DataJobInfo, DmeTypeRelatedCapabilities (O-RAN.WG2.R1TD-v03.00)
 #   - AI/ML: MLModel, MLTrainingJob (O-RAN R1-AIML)
 #   - rApp: rAppRegistration (O-RAN R1-rApp)
 # =========================================================================

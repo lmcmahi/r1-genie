@@ -1,17 +1,32 @@
 # r1_rest_apis.yaml
-# O-RAN R1 REST API definitions - CAPIF/3GPP TS 29.222 Compliant
-# Aligned with O-RAN.WG2.TS.R1GAP-R004-v12.00 and 3GPP CAPIF (TS 29.222)
+# O-RAN R1 REST API definitions - PURE R1 INTERFACE ONLY
+# Aligned with O-RAN.WG2.R1AP-v06.00, O-RAN.WG2.R1GAP-v09.00, O-RAN.WG2.R1TD-v03.00
+# and 3GPP CAPIF (TS 29.222)
 # =========================================================================
 #
-# URI Pattern Reference (per 3GPP TS 29.222):
+# IMPORTANT: This file contains ONLY R1 interface APIs (rApp ↔ SMO).
+# O1 (OAM) and O2 (Infrastructure) APIs are NOT included.
+#
+# R1 Interface Sections:
+#   - 5.1 Service Management (CAPIF-aligned)
+#   - 5.2 Data Management (R1-DME)
+#   - 5.3 A1 Policy Services (R1-AP)
+#   - 5.6 AI/ML Workflow Services (R1-AIML)
+#   - 5.7 rApp Management Services
+#
+# NOT INCLUDED (separate interfaces):
+#   - O1 Interface: SMO ↔ O-RAN NFs (OAM, Config, FM, PM)
+#   - O2 Interface: SMO ↔ O-Cloud (Infrastructure)
+#
+# URI Pattern Reference (R1AP-compliant):
 #   - Service Publishing:    /capif-publish/v1/{apfId}/service-apis
 #   - Service Discovery:     /capif-discover/v1/allServiceAPIs
-#   - API Invoker Mgmt:      /capif-api-invoker-management/v1/onboardedInvokers
-#   - Security:              /capif-security/v1/trustedInvokers/{apiInvokerId}
-#   - Events:                /capif-events/v1/{subscriberId}/subscriptions
-#   - Provider Mgmt:         /api-provider-management/v1/registrations
-#
-# R1-Specific Services follow O-RAN.WG2.R1AP patterns
+#   - DME Type Discovery:    /data-discovery/v2/dme-types
+#   - Data Access (Jobs):    /data-access/v1/data-jobs
+#   - Data Producer:         /data-producer/v1/registrations
+#   - A1 Policy:             /r1-a1-policy-management/v1/policies
+#   - AI/ML:                 /r1-aiml/v1/mlModels
+#   - rApp Management:       /r1-rapp-management/v1/rapps
 # =========================================================================
 
 # SECTION 5.1: Service Management and Exposure (CAPIF-aligned)
@@ -124,155 +139,320 @@ service_discovery:
     response_code: 204
     example_payload: null
 
-# SECTION 5.2: Data Management and Exposure (R1-DME aligned)
-data_registration:
-  - name: "Register DME type production capability"
-    uri: "{apiRoot}/r1-data-management/v1/data-producer-registrations"
+# SECTION 5.2: Data Management and Exposure (R1AP-compliant / R1-DME)
+# Reference: O-RAN.WG2.R1AP-v06.00
+#
+# Key terminology:
+#   - dmeTypeId: DME (Data Management & Exposure) type identifier
+#   - dataJobId: Data job identifier (replaces infoJobId)
+#   - DataJobInfo: Schema for data job creation
+#   - dataDeliveryMode: CONTINUOUS | ONE_TIME
+#   - dataDeliveryMethod: PUSH_HTTP | PULL_HTTP | STREAMING
+
+# --- Data Producer Registration ---
+data_producer_registration:
+  - name: "Register as DME data producer"
+    uri: "{apiRoot}/data-producer/v1/registrations"
     method: "POST"
     response_code: 201
     response_headers:
-      Location: "{apiRoot}/r1-data-management/v1/data-producer-registrations/{registrationId}"
+      Location: "{apiRoot}/data-producer/v1/registrations/{producerRegistrationId}"
     example_payload:
-      infoTypeId: "oran-dmf:ue-metrics-v1"
-      infoProducerId: "producer-001"
-      infoJobCallbackUrl: "http://rapp.example.com/info-job-callback"
-      supportedDeliveryMethods: ["PUSH", "PULL", "STREAMING"]
-      dataReportingPeriod: 300
-      supportedFeatures: "0"
+      producerId: "producer-001"
+      producerType: "DATA_PRODUCER"
+      supportedDmeTypes:
+        - dmeTypeId: "oran:coverage-kpis:1.0.0"
+          productionJobDefinitionSchema:
+            type: "object"
+            properties:
+              cellIdList:
+                type: "array"
+                items:
+                  type: "string"
+              measurementTypes:
+                type: "array"
+                items:
+                  type: "string"
+          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING"]
+          dataDeliverySchemaId: "coverage-kpi-delivery-schema-v1"
+      jobCallbackUri: "http://rapp.example.com/data-producer/job-callback"
 
-  - name: "Query DME type registration"
-    uri: "{apiRoot}/r1-data-management/v1/data-producer-registrations/{registrationId}"
+  - name: "Get producer registration"
+    uri: "{apiRoot}/data-producer/v1/registrations/{producerRegistrationId}"
     method: "GET"
     response_code: 200
     example_payload: null
 
-  - name: "Update DME type registration"
-    uri: "{apiRoot}/r1-data-management/v1/data-producer-registrations/{registrationId}"
+  - name: "Update producer registration"
+    uri: "{apiRoot}/data-producer/v1/registrations/{producerRegistrationId}"
     method: "PUT"
     response_code: 200
     example_payload:
-      infoTypeId: "oran-dmf:ue-metrics-v1"
-      infoProducerId: "producer-001"
-      supportedDeliveryMethods: ["PUSH", "STREAMING"]
-      dataReportingPeriod: 600
+      producerId: "producer-001"
+      supportedDmeTypes:
+        - dmeTypeId: "oran:coverage-kpis:1.0.0"
+          supportedDeliveryMethods: ["PUSH_HTTP", "PULL_HTTP", "STREAMING"]
 
-  - name: "Deregister DME type"
-    uri: "{apiRoot}/r1-data-management/v1/data-producer-registrations/{registrationId}"
+  - name: "Deregister data producer"
+    uri: "{apiRoot}/data-producer/v1/registrations/{producerRegistrationId}"
     method: "DELETE"
     response_code: 204
     example_payload: null
 
+# --- DME Type Discovery ---
+# Reference: O-RAN.WG2.R1AP-v06.00 Section on Data Discovery
+# Response type: array(DmeTypeRelatedCapabilities)
+#
+# dmeTypeId format: String in form "<namespace>:<name>:<version>"
+#   Example: "oran:coverage-kpis:1.0.0"
+#   Note: Version is commonly semantic (e.g., "1.0.0") for interoperability
+#
+# data-category query param:
+#   - Values are IMPLEMENTATION-DEPENDENT (check your SMO's supported values)
+#   - R1AP defines the parameter but exact enum values vary by implementation
+#   - Safest approach: query without filter first, then use returned values
+#
+# IMPORTANT: Response field names below are ILLUSTRATIVE.
+# Actual field names must match DmeTypeRelatedCapabilities spec definition.
+# Consult your R1AP version for exact wire-format field names.
 data_discovery:
-  - name: "Discover DME types"
-    uri: "{apiRoot}/r1-data-management/v1/info-types"
+  - name: "Discover all DME types"
+    uri: "{apiRoot}/data-discovery/v2/dme-types"
+    method: "GET"
+    response_code: 200
+    query_params:
+      - name: "dme-type-id"
+        required: false
+        description: "Filter by specific DME type identifier (string format)"
+      - name: "data-category"
+        required: false
+        description: "Filter by data category (IMPLEMENTATION-DEPENDENT - use values from your SMO)"
+    example_payload: null
+    example_response:
+      # Response is array(DmeTypeRelatedCapabilities)
+      # dmeTypeId is a STRING: "<namespace>:<name>:<version>"
+      # NOTE: Field names below are ILLUSTRATIVE - verify against your R1AP spec
+      - dmeTypeDefinition:
+          dmeTypeId: "oran:coverage-kpis:1.0.0"
+          dataProductionSchema:
+            type: "object"
+            properties:
+              cellIdList:
+                type: "array"
+                items:
+                  type: "string"
+              measurementTypes:
+                type: "array"
+                items:
+                  type: "string"
+              reportingPeriod:
+                type: "integer"
+                minimum: 1
+          dataDeliverySchemas:
+            - schemaId: "coverage-kpi-delivery-schema-v1"
+              schema:
+                type: "object"
+                properties:
+                  cellId:
+                    type: "string"
+                  rsrp_dbm:
+                    type: "number"
+                  rsrq_db:
+                    type: "number"
+                  sinr_db:
+                    type: "number"
+        dataAccessEndpoint: "https://smo.operator.com/data-access/v1"
+        dataDeliveryModes:
+          - deliveryMode: "CONTINUOUS"
+            supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING"]
+          - deliveryMode: "ONE_TIME"
+            supportedDeliveryMethods: ["PUSH_HTTP", "PULL_HTTP"]
+      - dmeTypeDefinition:
+          dmeTypeId: "oran:capacity-kpis:1.0.0"
+        dataAccessEndpoint: "https://smo.operator.com/data-access/v1"
+        dataDeliveryModes:
+          - deliveryMode: "CONTINUOUS"
+            supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING"]
+      - dmeTypeDefinition:
+          dmeTypeId: "oran:cell-config:1.0.0"
+        dataAccessEndpoint: "https://smo.operator.com/data-access/v1"
+        dataDeliveryModes:
+          - deliveryMode: "ONE_TIME"
+            supportedDeliveryMethods: ["PUSH_HTTP", "PULL_HTTP"]
+
+  - name: "Get DME type details"
+    uri: "{apiRoot}/data-discovery/v2/dme-types/{dmeTypeId}"
     method: "GET"
     response_code: 200
     example_payload: null
 
-  - name: "Get DME type information"
-    uri: "{apiRoot}/r1-data-management/v1/info-types/{infoTypeId}"
+  - name: "Subscribe to DME type availability changes"
+    uri: "{apiRoot}/data-discovery/v2/dme-type-subscriptions"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/data-discovery/v2/dme-type-subscriptions/{subscriptionId}"
+    example_payload:
+      callbackUri: "http://rapp.example.com/dme-type-notifications"
+      # dataCategory filter values are IMPLEMENTATION-DEPENDENT
+      dmeTypeFilters: []
+      eventTypes: ["DME_TYPE_AVAILABLE", "DME_TYPE_UNAVAILABLE"]
+
+  - name: "Delete DME type subscription"
+    uri: "{apiRoot}/data-discovery/v2/dme-type-subscriptions/{subscriptionId}"
+    method: "DELETE"
+    response_code: 204
+    example_payload: null
+
+# --- Data Access (Data Jobs) ---
+# Reference: O-RAN.WG2.R1AP-v06.00 Section on Data Access
+#
+# dmeTypeId format: String "<namespace>:<name>:<version>"
+#
+# IMPORTANT: R1AP DataJobInfo attributes (normative):
+#   - dmeTypeId, productionJobDefinition, dataDeliveryMode, dataDeliveryMethod
+#   - dataDeliverySchemaId, pushDeliveryDetailsHttp/pullDeliveryDetailsHttp
+#   - dataAvailabilityNotificationUri (optional - for DataAvailabilityNotification)
+#
+# NOTE: "jobOwner" is NOT part of R1AP DataJobInfo. Ownership should be
+# determined via authN/authZ context (token subject) or vendor extension.
+#
+# PUSH_HTTP Data Delivery:
+#   - R1AP does NOT define OpenAPI for HTTP-based Push data delivery
+#   - Payload format is IMPLEMENTATION-SPECIFIC (defined by dataDeliverySchemaId)
+#   - Wire format is NOT standardized by R1AP
+#
+# DataAvailabilityNotification (separate mechanism):
+#   - Posted to dataAvailabilityNotificationUri with 204 No Content response
+#   - Different from actual data push
+data_access:
+  - name: "Create data job"
+    uri: "{apiRoot}/data-access/v1/data-jobs"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
+    example_payload:
+      dmeTypeId: "oran:coverage-kpis:1.0.0"
+      productionJobDefinition:
+        cellIdList: ["cell_1", "cell_2"]
+        measurementTypes: ["rsrp_dbm", "rsrq_db", "sinr_db"]
+        reportingPeriod: 60
+      dataDeliveryMode: "CONTINUOUS"
+      dataDeliveryMethod: "PUSH_HTTP"
+      dataDeliverySchemaId: "coverage-kpi-delivery-schema-v1"
+      pushDeliveryDetailsHttp:
+        dataPushUri: "http://rapp.example.com/data-delivery/coverage"
+    example_response:
+      dataJobId: "job-12345"
+      dmeTypeId: "oran:coverage-kpis:1.0.0"
+      status: "RUNNING"
+
+  - name: "Create one-time data request"
+    uri: "{apiRoot}/data-access/v1/data-jobs"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
+    example_payload:
+      dmeTypeId: "oran:cell-config:1.0.0"
+      productionJobDefinition:
+        cellIdList: ["cell_1"]
+        attributes: ["pMax", "nRPCI", "nRTAC"]
+      dataDeliveryMode: "ONE_TIME"
+      dataDeliveryMethod: "PUSH_HTTP"
+      pushDeliveryDetailsHttp:
+        dataPushUri: "http://rapp.example.com/data-delivery/config"
+
+  - name: "Get data job"
+    uri: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
     method: "GET"
     response_code: 200
     example_payload: null
-
-  - name: "Subscribe to DME type changes"
-    uri: "{apiRoot}/r1-data-management/v1/info-type-subscriptions"
-    method: "POST"
-    response_code: 201
-    response_headers:
-      Location: "{apiRoot}/r1-data-management/v1/info-type-subscriptions/{subscriptionId}"
-    example_payload:
-      callbackReference: "http://rapp.example.com/dme-notifications"
-      infoTypeIds: ["oran-dmf:ue-metrics-v1"]
-      supportedFeatures: "0"
-
-data_request:
-  - name: "Request data"
-    uri: "{apiRoot}/r1-data-management/v1/info-jobs"
-    method: "POST"
-    response_code: 201
-    response_headers:
-      Location: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}"
-    example_payload:
-      infoTypeId: "oran-dmf:kpi-data-v1"
-      infoJobData:
-        timeInterval:
-          start: "2024-01-01T00:00:00Z"
-          end: "2024-01-01T23:59:59Z"
-        filterCriteria:
-          cellIdList: ["NRCell-1", "NRCell-2"]
-      targetUri: "http://rapp.example.com/data-delivery"
-      owner: "rapp-001"
-      supportedFeatures: "0"
-
-  - name: "Query data request status"
-    uri: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}/status"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-data_subscription:
-  - name: "Subscribe to data"
-    uri: "{apiRoot}/r1-data-management/v1/info-jobs"
-    method: "POST"
-    response_code: 201
-    response_headers:
-      Location: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}"
-    example_payload:
-      infoTypeId: "oran-dmf:kpi-data-v1"
-      infoJobData:
-        filterCriteria:
-          cellIdList: ["NRCell-1", "NRCell-2"]
-          measurementTypes: ["rsrp_dbm", "prb_usage_dl"]
-        deliveryMethod: "PUSH"
-        reportingPeriod: 300
-      targetUri: "http://rapp.example.com/kpi-stream"
-      owner: "rapp-001"
+    example_response:
+      dataJobId: "job-12345"
+      dmeTypeId: "oran:coverage-kpis:1.0.0"
+      status: "RUNNING"
+      dataDeliveryMode: "CONTINUOUS"
+      dataDeliveryMethod: "PUSH_HTTP"
+      createdAt: "2024-01-15T10:00:00Z"
 
   - name: "Get data job status"
-    uri: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}"
+    uri: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}/status"
     method: "GET"
     response_code: 200
     example_payload: null
+    example_response:
+      dataJobId: "job-12345"
+      status: "RUNNING"
+      lastDataDelivery: "2024-01-15T10:30:00Z"
+      deliveryCount: 30
 
-  - name: "Update data subscription"
-    uri: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}"
+  - name: "Update data job"
+    uri: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
     method: "PUT"
     response_code: 200
     example_payload:
-      infoTypeId: "oran-dmf:kpi-data-v1"
-      infoJobData:
-        reportingPeriod: 600
-      targetUri: "http://rapp.example.com/kpi-stream"
-      owner: "rapp-001"
+      dmeTypeId: "oran:coverage-kpis:1.0.0"
+      productionJobDefinition:
+        cellIdList: ["cell_1", "cell_2", "cell_3"]
+        measurementTypes: ["rsrp_dbm", "rsrq_db", "sinr_db"]
+        reportingPeriod: 30
+      dataDeliveryMode: "CONTINUOUS"
+      dataDeliveryMethod: "PUSH_HTTP"
+      pushDeliveryDetailsHttp:
+        dataPushUri: "http://rapp.example.com/data-delivery/coverage"
 
-  - name: "Unsubscribe from data"
-    uri: "{apiRoot}/r1-data-management/v1/info-jobs/{infoJobId}"
+  - name: "Delete data job"
+    uri: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
     method: "DELETE"
     response_code: 204
     example_payload: null
 
-data_offer:
+  - name: "List all data jobs"
+    uri: "{apiRoot}/data-access/v1/data-jobs"
+    method: "GET"
+    response_code: 200
+    query_params:
+      - name: "jobOwner"
+        required: false
+      - name: "dmeTypeId"
+        required: false
+      - name: "status"
+        required: false
+    example_payload: null
+
+# --- Data Offers (for historical/bulk data) ---
+data_offers:
   - name: "Create data offer"
-    uri: "{apiRoot}/r1-data-management/v1/data-offers"
+    uri: "{apiRoot}/data-access/v1/data-offers"
     method: "POST"
     response_code: 201
     response_headers:
-      Location: "{apiRoot}/r1-data-management/v1/data-offers/{offerId}"
+      Location: "{apiRoot}/data-access/v1/data-offers/{dataOfferId}"
     example_payload:
-      infoTypeId: "oran-dmf:historical-ue-metrics"
+      dmeTypeId: "oran:historical-kpis:1.0.0"
       dataCharacteristics:
-        timeInterval:
-          start: "2024-01-01T00:00:00Z"
-          end: "2024-01-31T23:59:59Z"
+        timeRange:
+          startTime: "2024-01-01T00:00:00Z"
+          endTime: "2024-01-31T23:59:59Z"
         granularityPeriod: 300
-      supportedDeliveryMethod: "PULL"
+        cellIdList: ["cell_1", "cell_2"]
+      supportedDeliveryMethod: "PULL_HTTP"
       offerExpirationTime: "2024-12-31T23:59:59Z"
+      pullDeliveryDetailsHttp:
+        dataFetchUri: "http://data-lake.example.com/kpi-data/batch-001"
 
   - name: "Get data offer"
-    uri: "{apiRoot}/r1-data-management/v1/data-offers/{offerId}"
+    uri: "{apiRoot}/data-access/v1/data-offers/{dataOfferId}"
     method: "GET"
     response_code: 200
+    example_payload: null
+
+  - name: "Delete data offer"
+    uri: "{apiRoot}/data-access/v1/data-offers/{dataOfferId}"
+    method: "DELETE"
+    response_code: 204
     example_payload: null
 
   - name: "Terminate data offer"
@@ -400,216 +580,12 @@ a1_enrichment_information:
       targetUri: "http://rapp.example.com/ei-data"
       owner: "rapp-001"
 
-# SECTION 5.4: RAN OAM-Related Services (O1/3GPP TS 28.532 aligned)
-network_information:
-  - name: "Query cell information"
-    uri: "{apiRoot}/r1-oam/v1/managedElements"
-    method: "GET"
-    response_code: 200
-    query_params:
-      - name: "filter"
-        required: false
-      - name: "fields"
-        required: false
-    example_payload: null
-
-  - name: "Get cell details"
-    uri: "{apiRoot}/r1-oam/v1/managedElements/{managedElementId}/nrCellDu/{cellId}"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-  - name: "Get gNB-DU details"
-    uri: "{apiRoot}/r1-oam/v1/managedElements/{managedElementId}/gnbDuFunction/{gnbDuId}"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-fault_management:
-  - name: "Query alarms"
-    uri: "{apiRoot}/r1-oam/v1/alarmList/alarmRecords"
-    method: "GET"
-    response_code: 200
-    query_params:
-      - name: "filter"
-        required: false
-      - name: "alarmAckState"
-        required: false
-    example_payload: null
-
-  - name: "Get alarm details"
-    uri: "{apiRoot}/r1-oam/v1/alarmList/alarmRecords/{alarmId}"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-  - name: "Change alarm acknowledgement"
-    uri: "{apiRoot}/r1-oam/v1/alarmList/alarmRecords/{alarmId}"
-    method: "PATCH"
-    response_code: 200
-    example_payload:
-      ackState: "ACKNOWLEDGED"
-      ackUserId: "admin"
-      ackSystemId: "smo-001"
-
-  - name: "Subscribe to alarm notifications"
-    uri: "{apiRoot}/r1-oam/v1/alarmList/subscriptions"
-    method: "POST"
-    response_code: 201
-    response_headers:
-      Location: "{apiRoot}/r1-oam/v1/alarmList/subscriptions/{subscriptionId}"
-    example_payload:
-      callbackReference: "http://rapp.example.com/alarm-notifications"
-      filter:
-        perceivedSeverity: ["CRITICAL", "MAJOR"]
-      supportedFeatures: "0"
-
-performance_management:
-  - name: "Query performance data"
-    uri: "{apiRoot}/r1-oam/v1/measDataCollection"
-    method: "GET"
-    response_code: 200
-    query_params:
-      - name: "filter"
-        required: false
-      - name: "granularityPeriod"
-        required: false
-    example_payload: null
-
-  - name: "Get PM job"
-    uri: "{apiRoot}/r1-oam/v1/pmJobs/{pmJobId}"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-  - name: "Create PM job"
-    uri: "{apiRoot}/r1-oam/v1/pmJobs"
-    method: "POST"
-    response_code: 201
-    response_headers:
-      Location: "{apiRoot}/r1-oam/v1/pmJobs/{pmJobId}"
-    example_payload:
-      granularityPeriod: 900
-      reportingPeriod: 900
-      measurementTypes:
-        - "DRB.UEThpDl"
-        - "DRB.UEThpUl"
-        - "RRU.PrbUsedDl"
-      objectInstances:
-        - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=cell-1"
-      fileBasedGp: 900
-      streamTarget: "http://rapp.example.com/pm-data"
-
-configuration_management:
-  - name: "Get configuration schemas"
-    uri: "{apiRoot}/r1-oam/v1/schemas"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-  - name: "Read configuration"
-    uri: "{apiRoot}/r1-oam/v1/managedElements/{managedElementId}"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-  - name: "Write configuration"
-    uri: "{apiRoot}/r1-oam/v1/managedElements/{managedElementId}"
-    method: "PUT"
-    response_code: 200
-    example_payload:
-      id: "gNB-001"
-      attributes:
-        userLabel: "gNodeB Site 1"
-      gnbDuFunction:
-        - id: "du-1"
-          attributes:
-            gnbDuId: 1
-          nrCellDu:
-            - id: "cell-1"
-              attributes:
-                cellLocalId: 1
-                nRPCI: 100
-                nRTAC: 1
-                pMax: 23
-
-  - name: "Patch configuration"
-    uri: "{apiRoot}/r1-oam/v1/managedElements/{managedElementId}"
-    method: "PATCH"
-    response_code: 200
-    example_payload:
-      gnbDuFunction:
-        - id: "du-1"
-          nrCellDu:
-            - id: "cell-1"
-              attributes:
-                pMax: 20
-
-# SECTION 5.5: O2-Related Services (O-RAN.WG6.O2 aligned)
-o2_infrastructure_management:
-  - name: "Query resource pools"
-    uri: "{apiRoot}/o2ims-infrastructureInventory/v1/resourcePools"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-  - name: "Get resource pool details"
-    uri: "{apiRoot}/o2ims-infrastructureInventory/v1/resourcePools/{resourcePoolId}"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-  - name: "Query resources"
-    uri: "{apiRoot}/o2ims-infrastructureInventory/v1/resourcePools/{resourcePoolId}/resources"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-  - name: "Query infrastructure monitoring"
-    uri: "{apiRoot}/o2ims-infrastructureMonitoring/v1/alarmSubscriptions"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-  - name: "Subscribe to infrastructure alarms"
-    uri: "{apiRoot}/o2ims-infrastructureMonitoring/v1/alarmSubscriptions"
-    method: "POST"
-    response_code: 201
-    response_headers:
-      Location: "{apiRoot}/o2ims-infrastructureMonitoring/v1/alarmSubscriptions/{subscriptionId}"
-    example_payload:
-      callback: "http://rapp.example.com/o2-alarm-notifications"
-      filter:
-        resourcePoolId: "pool-001"
-
-o2_deployment_management:
-  - name: "Get deployment managers"
-    uri: "{apiRoot}/o2dms/v1/deploymentManagers"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-  - name: "Query deployment monitoring"
-    uri: "{apiRoot}/o2dms/v1/deploymentManagers/{deploymentManagerId}/nfDeployments"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-
-  - name: "Create NF deployment"
-    uri: "{apiRoot}/o2dms/v1/deploymentManagers/{deploymentManagerId}/nfDeployments"
-    method: "POST"
-    response_code: 201
-    response_headers:
-      Location: "{apiRoot}/o2dms/v1/deploymentManagers/{deploymentManagerId}/nfDeployments/{nfDeploymentId}"
-    example_payload:
-      name: "rapp-deployment-001"
-      description: "Traffic optimization rApp deployment"
-      nfDeploymentDescriptorId: "desc-001"
-      parameterOverrides:
-        replicas: 2
-        resourceRequests:
-          cpu: "500m"
-          memory: "512Mi"
+# NOTE: O1 APIs (Section 5.4) and O2 APIs (Section 5.5) have been removed.
+# This file contains ONLY pure R1 interface APIs for rApp ↔ SMO communication.
+# O1 (OAM) and O2 (Infrastructure) are separate interfaces not part of R1.
+#
+# For O1 APIs, see: o1_rest_apis.yaml (if needed)
+# For O2 APIs, see: o2_rest_apis.yaml (if needed)
 
 # SECTION 5.6: AI/ML Workflow Services (R1-AIML aligned)
 aiml_model_registration:
