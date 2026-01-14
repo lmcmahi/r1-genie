@@ -44,18 +44,18 @@ data_entities:
     produced_by: ["service_registration.POST_service_apis"]
     consumed_by: ["service_discovery.GET_allServiceAPIs"]
 
-  # Data Management
-  infoTypeId:
+  # Data Management (R1AP-compliant naming)
+  dmeTypeId:
     type: "string"
-    description: "DME information type identifier"
-    produced_by: ["data_discovery.GET_info_types", "data_registration.POST_producer_registrations"]
-    consumed_by: ["data_subscription.POST_info_jobs", "data_request.POST_info_jobs", "data_offer.POST_data_offers"]
+    description: "DME type identifier (format: <namespace>:<name>:<version>)"
+    produced_by: ["data_discovery.GET_dme_types", "data_producer.POST_registrations"]
+    consumed_by: ["data_access.POST_data_jobs"]
 
-  infoJobId:
+  dataJobId:
     type: "string"
-    description: "Data subscription job identifier"
-    produced_by: ["data_subscription.POST_info_jobs", "data_request.POST_info_jobs"]
-    consumed_by: ["data_subscription.GET_info_jobs", "data_subscription.PUT_info_jobs", "data_subscription.DELETE_info_jobs"]
+    description: "Data job identifier"
+    produced_by: ["data_access.POST_data_jobs"]
+    consumed_by: ["data_access.GET_data_jobs", "data_access.PUT_data_jobs", "data_access.DELETE_data_jobs"]
 
   registrationId:
     type: "string"
@@ -280,90 +280,71 @@ api_nodes:
         requires: ["registrationId"]
         idempotent: true
 
+  # R1AP-compliant Data Discovery (Section 5.2)
   data_discovery:
     category: "data_management"
     spec_section: "5.2"
     operations:
-      GET_info_types:
-        uri: "/r1-data-management/v1/info-types"
+      GET_dme_types:
+        uri: "/data-discovery/v2/dme-types"
         method: "GET"
         description: "Discover available DME types"
-        produces: ["infoTypeId", "infoTypeSchema"]
+        produces: ["dmeTypeId", "dmeTypeSchema", "dataAccessEndpoint"]
         requires: []
         idempotent: true
 
-      GET_info_type_details:
-        uri: "/r1-data-management/v1/info-types/{infoTypeId}"
+      GET_dme_type_details:
+        uri: "/data-discovery/v2/dme-types/{dmeTypeId}"
         method: "GET"
-        description: "Get DME type information"
-        produces: ["infoTypeSchema"]
-        requires: ["infoTypeId"]
+        description: "Get DME type details"
+        produces: ["dmeTypeSchema", "dataDeliveryModes"]
+        requires: ["dmeTypeId"]
         idempotent: true
 
-      POST_info_type_subscriptions:
-        uri: "/r1-data-management/v1/info-type-subscriptions"
-        method: "POST"
-        description: "Subscribe to DME type changes"
-        produces: ["subscriptionId"]
-        requires: []
-        idempotent: false
-
-  data_request:
+  # R1AP-compliant Data Access (Section 5.2)
+  data_access:
     category: "data_management"
     spec_section: "5.2"
     operations:
-      POST_info_jobs:
-        uri: "/r1-data-management/v1/info-jobs"
+      POST_data_jobs:
+        uri: "/data-access/v1/data-jobs"
         method: "POST"
-        description: "Request historical data"
-        produces: ["infoJobId"]
-        requires: ["infoTypeId"]
+        description: "Create data job (CONTINUOUS or ONE_TIME)"
+        produces: ["dataJobId"]
+        requires: ["dmeTypeId"]
         consumes_kpis: true
         idempotent: false
 
-      GET_info_job_status:
-        uri: "/r1-data-management/v1/info-jobs/{infoJobId}/status"
+      GET_data_jobs:
+        uri: "/data-access/v1/data-jobs/{dataJobId}"
         method: "GET"
-        description: "Query data request status"
-        produces: ["jobStatus"]
-        requires: ["infoJobId"]
-        idempotent: true
-
-  data_subscription:
-    category: "data_management"
-    spec_section: "5.2"
-    operations:
-      POST_info_jobs:
-        uri: "/r1-data-management/v1/info-jobs"
-        method: "POST"
-        description: "Subscribe to real-time data stream"
-        produces: ["infoJobId", "subscriptionId"]
-        requires: ["infoTypeId"]
-        consumes_kpis: true
-        idempotent: false
-
-      GET_info_jobs:
-        uri: "/r1-data-management/v1/info-jobs/{infoJobId}"
-        method: "GET"
-        description: "Get data subscription details"
+        description: "Get data job details"
         produces: []
-        requires: ["infoJobId"]
+        requires: ["dataJobId"]
         idempotent: true
 
-      PUT_info_jobs:
-        uri: "/r1-data-management/v1/info-jobs/{infoJobId}"
+      PUT_data_jobs:
+        uri: "/data-access/v1/data-jobs/{dataJobId}"
         method: "PUT"
-        description: "Update data subscription parameters"
+        description: "Update data job parameters"
         produces: []
-        requires: ["infoJobId"]
+        requires: ["dataJobId"]
         idempotent: true
 
-      DELETE_info_jobs:
-        uri: "/r1-data-management/v1/info-jobs/{infoJobId}"
+      DELETE_data_jobs:
+        uri: "/data-access/v1/data-jobs/{dataJobId}"
         method: "DELETE"
-        description: "Unsubscribe from data stream"
+        description: "Delete data job"
         produces: []
-        requires: ["infoJobId"]
+        requires: ["dataJobId"]
+        idempotent: true
+
+      GET_data_job_status:
+        uri: "/data-access/v1/data-jobs/{dataJobId}/status"
+        method: "GET"
+        description: "Query data job status"
+        produces: ["jobStatus"]
+        requires: ["dataJobId"]
         idempotent: true
 
   data_offer:
@@ -954,27 +935,27 @@ api_nodes:
 # ============================================================
 relationships:
   # -----------------------------------------------------------
-  # Data Management Flow
+  # Data Management Flow (R1AP-compliant)
   # -----------------------------------------------------------
-  - from: "data_discovery.GET_info_types"
-    to: "data_subscription.POST_info_jobs"
+  - from: "data_discovery.GET_dme_types"
+    to: "data_access.POST_data_jobs"
     type: "ENABLES"
-    data_flow: "infoTypeId"
-    description: "Must discover data types before subscribing"
+    data_flow: "dmeTypeId"
+    description: "Must discover DME types before creating data job"
     mandatory: true
 
-  - from: "data_discovery.GET_info_types"
-    to: "data_request.POST_info_jobs"
+  - from: "data_access.POST_data_jobs"
+    to: "data_access.GET_data_jobs"
     type: "ENABLES"
-    data_flow: "infoTypeId"
-    description: "Must discover data types before requesting"
+    data_flow: "dataJobId"
+    description: "Data job must exist to query"
     mandatory: true
 
-  - from: "data_discovery.GET_info_types"
-    to: "data_offer.POST_data_offers"
+  - from: "data_access.POST_data_jobs"
+    to: "data_access.DELETE_data_jobs"
     type: "ENABLES"
-    data_flow: "infoTypeId"
-    description: "Must know data type before offering"
+    data_flow: "dataJobId"
+    description: "Data job must exist to delete"
     mandatory: true
 
   # -----------------------------------------------------------
@@ -1148,11 +1129,11 @@ relationships:
   # -----------------------------------------------------------
   # Cross-Domain Informational Relationships
   # -----------------------------------------------------------
-  - from: "data_subscription.POST_info_jobs"
+  - from: "data_access.POST_data_jobs"
     to: "a1_policy_management.POST_policies"
     type: "INFORMS"
     data_flow: "kpi_data"
-    description: "KPI data from subscriptions informs policy decisions"
+    description: "KPI data from data jobs informs policy decisions"
     mandatory: false
 
   - from: "performance_management.GET_measData"
@@ -1189,12 +1170,12 @@ constraints:
     error_message: "Cannot create A1 policy without first querying policy types"
     severity: "error"
 
-  - name: "subscription_requires_discovery"
+  - name: "data_job_requires_discovery"
     type: "prerequisite"
     rule: |
-      IF workflow contains "data_subscription.POST_info_jobs"
-      THEN workflow must contain "data_discovery.GET_info_types" BEFORE it
-    error_message: "Cannot subscribe to data without first discovering available types"
+      IF workflow contains "data_access.POST_data_jobs"
+      THEN workflow must contain "data_discovery.GET_dme_types" BEFORE it
+    error_message: "Cannot create data job without first discovering available DME types"
     severity: "error"
 
   - name: "model_artifact_requires_registration"
@@ -1270,13 +1251,13 @@ workflow_patterns:
       - "stream.*metrics"
     sequence:
       - step: 1
-        api: "data_discovery.GET_info_types"
-        purpose: "Discover available data types"
+        api: "data_discovery.GET_dme_types"
+        purpose: "Discover available DME types"
       - step: 2
-        api: "data_subscription.POST_info_jobs"
-        purpose: "Subscribe to data stream"
-        uses_from_previous: ["infoTypeId"]
-    outputs: ["infoJobId", "subscriptionId"]
+        api: "data_access.POST_data_jobs"
+        purpose: "Create data job for continuous streaming"
+        uses_from_previous: ["dmeTypeId"]
+    outputs: ["dataJobId"]
 
   # -----------------------------------------------------------
   # A1 Policy Patterns
@@ -1433,11 +1414,11 @@ workflow_patterns:
       - "coverage hole"
     sequence:
       - step: 1
-        api: "data_discovery.GET_info_types"
-        purpose: "Find coverage KPI data types"
+        api: "data_discovery.GET_dme_types"
+        purpose: "Find coverage KPI DME types"
       - step: 2
-        api: "data_subscription.POST_info_jobs"
-        purpose: "Subscribe to coverage KPIs"
+        api: "data_access.POST_data_jobs"
+        purpose: "Create data job for coverage KPIs"
         kpis: ["rsrp_dbm", "rsrq_db", "sinr_db"]
       - step: 3
         api: "network_information.GET_managedElements"
@@ -1457,11 +1438,11 @@ workflow_patterns:
       - "throughput.*low"
     sequence:
       - step: 1
-        api: "data_discovery.GET_info_types"
-        purpose: "Find capacity KPI data types"
+        api: "data_discovery.GET_dme_types"
+        purpose: "Find capacity KPI DME types"
       - step: 2
-        api: "data_subscription.POST_info_jobs"
-        purpose: "Subscribe to capacity KPIs"
+        api: "data_access.POST_data_jobs"
+        purpose: "Create data job for capacity KPIs"
         kpis: ["prb_utilization_dl_pct", "active_ues", "throughput_dl_mbps"]
       - step: 3
         api: "network_information.GET_managedElements"
@@ -1536,11 +1517,11 @@ workflow_patterns:
       - "setup.*monitoring"
     sequence:
       - step: 1
-        api: "data_discovery.GET_info_types"
-        purpose: "Discover available metrics"
+        api: "data_discovery.GET_dme_types"
+        purpose: "Discover available DME types"
       - step: 2
-        api: "data_subscription.POST_info_jobs"
-        purpose: "Subscribe to KPIs"
+        api: "data_access.POST_data_jobs"
+        purpose: "Create data job for KPIs"
       - step: 3
         api: "fault_management.POST_alarm_subscriptions"
         purpose: "Subscribe to alarms"
