@@ -7,7 +7,7 @@
 # Schema Reference:
 #   - Service Publishing: ServiceAPIDescription (3GPP TS 29.222)
 #   - A1 Policy: A1Policy (O-RAN.WG2.R1AP-v06.00)
-#   - Data Management: DataJobInfo, DmeTypeRelatedCapabilities (O-RAN.WG2.R1TD-v03.00)
+#   - Data Management: DataJobInfo, DmeTypeRelatedCapabilities (O-RAN.WG2.R1AP-v06.00 OpenAPI)
 #   - AI/ML: MLModel, MLTrainingJob (O-RAN R1-AIML)
 #   - rApp: rAppRegistration (O-RAN R1-rApp)
 # =========================================================================
@@ -103,7 +103,7 @@ data_registration:
       type: "array"
       items:
         type: "string"
-        enum: ["PUSH", "PULL", "STREAMING"]
+        enum: ["PUSH", "PULL", "STREAMING_KAFKA"]
     dataReportingPeriod:
       type: "integer"
       minimum: 1
@@ -124,7 +124,7 @@ data_subscription:
           type: "object"
         deliveryMethod:
           type: "string"
-          enum: ["PUSH", "PULL", "STREAMING"]
+          enum: ["PUSH", "PULL", "STREAMING_KAFKA"]
         reportingPeriod:
           type: "integer"
     targetUri:
@@ -156,7 +156,7 @@ data_offer:
           type: "integer"
     supportedDeliveryMethod:
       type: "string"
-      enum: ["PUSH", "PULL", "STREAMING"]
+      enum: ["PUSH", "PULL", "STREAMING_KAFKA"]
     offerExpirationTime:
       type: "string"
       format: "date-time"
@@ -178,7 +178,7 @@ a1_policy_management:
       description: "Near-RT RIC identifier"
     serviceAreaId:
       type: "string"
-    policyData:
+    policyObject:
       type: "object"
       description: "Policy payload - schema defined by policyTypeId"
     transient:
@@ -187,7 +187,7 @@ a1_policy_management:
     statusNotificationUri:
       type: "string"
       format: "uri"
-  required: ["policyId", "policyTypeId", "nearRtRicId", "policyData"]
+  required: ["policyId", "policyTypeId", "nearRtRicId", "policyObject"]
 
 # A1 Enrichment Information Schema
 a1_enrichment_information:

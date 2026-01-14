@@ -1,0 +1,1549 @@
+# r1_api_dependencies.yaml
+# O-RAN R1 API Dependency Graph for Workflow Generation
+# =========================================================================
+#
+# This dependency graph defines API relationships, prerequisites, and constraints
+# to ensure valid workflow orchestration during training dataset generation.
+#
+# NOTE: This is a dependency/configuration graph, NOT a formal ontology.
+# For formal reasoning, consider OWL/RDF.
+#
+# KEY CONCEPTS:
+# - api_nodes: Define what each API operation produces and requires
+# - relationships: Define how APIs connect (data flow, prerequisites)
+# - constraints: Define what combinations are invalid
+# - workflow_patterns: Define common valid sequences
+# =========================================================================
+
+metadata:
+  version: "1.0.0"
+  description: "O-RAN R1 API Dependency Graph for multi-step workflow generation"
+  last_updated: "2024-01-15"
+  o_ran_spec_version: "R004-v12.00"
+
+# ============================================================
+# DATA ENTITIES - Shared data objects produced/consumed by APIs
+# ============================================================
+data_entities:
+  # Service Management
+  apiRoot:
+    type: "string"
+    description: "Base URL for all API calls"
+    produced_by: ["bootstrap.GET_bootstrap_info"]
+    consumed_by: ["*"]
+
+  apfId:
+    type: "string"
+    description: "API Publishing Function identifier"
+    produced_by: ["service_registration.POST_service_apis"]
+    consumed_by: ["service_registration.PUT_service_apis", "service_registration.DELETE_service_apis", "service_registration.GET_service_apis"]
+
+  serviceApiId:
+    type: "string"
+    description: "Registered service API identifier"
+    produced_by: ["service_registration.POST_service_apis"]
+    consumed_by: ["service_discovery.GET_allServiceAPIs"]
+
+  # Data Management
+  infoTypeId:
+    type: "string"
+    description: "DME information type identifier"
+    produced_by: ["data_discovery.GET_info_types", "data_registration.POST_producer_registrations"]
+    consumed_by: ["data_subscription.POST_info_jobs", "data_request.POST_info_jobs", "data_offer.POST_data_offers"]
+
+  infoJobId:
+    type: "string"
+    description: "Data subscription job identifier"
+    produced_by: ["data_subscription.POST_info_jobs", "data_request.POST_info_jobs"]
+    consumed_by: ["data_subscription.GET_info_jobs", "data_subscription.PUT_info_jobs", "data_subscription.DELETE_info_jobs"]
+
+  registrationId:
+    type: "string"
+    description: "Data producer registration identifier"
+    produced_by: ["data_registration.POST_producer_registrations"]
+    consumed_by: ["data_registration.GET_producer_registrations", "data_registration.PUT_producer_registrations", "data_registration.DELETE_producer_registrations"]
+
+  # A1 Policy Management
+  nearRtRicId:
+    type: "string"
+    description: "Near-RT RIC identifier"
+    produced_by: ["a1_policy_management.GET_rics"]
+    consumed_by: ["a1_policy_management.POST_policies"]
+
+  policyTypeId:
+    type: "string"
+    description: "A1 policy type identifier"
+    produced_by: ["a1_policy_management.GET_policytypes"]
+    consumed_by: ["a1_policy_management.POST_policies", "a1_policy_management.PUT_policies"]
+
+  policyId:
+    type: "string"
+    description: "A1 policy instance identifier"
+    produced_by: ["a1_policy_management.POST_policies"]
+    consumed_by: ["a1_policy_management.GET_policies", "a1_policy_management.PUT_policies", "a1_policy_management.DELETE_policies", "a1_policy_management.GET_policy_status"]
+
+  policySchema:
+    type: "object"
+    description: "JSON schema for policy data"
+    produced_by: ["a1_policy_management.GET_policytypes"]
+    consumed_by: ["a1_policy_management.POST_policies"]
+
+  # A1 Enrichment Information
+  eiTypeId:
+    type: "string"
+    description: "Enrichment information type identifier"
+    produced_by: ["a1_enrichment_information.POST_eitypes", "a1_enrichment_information.GET_eitypes"]
+    consumed_by: ["a1_enrichment_information.POST_eijobs"]
+
+  eiJobId:
+    type: "string"
+    description: "Enrichment information job identifier"
+    produced_by: ["a1_enrichment_information.POST_eijobs"]
+    consumed_by: ["a1_enrichment_information.GET_eijobs", "a1_enrichment_information.DELETE_eijobs"]
+
+  # Network/OAM
+  managedElementId:
+    type: "string"
+    description: "Managed network element identifier (gNB)"
+    produced_by: ["network_information.GET_managedElements"]
+    consumed_by: ["network_information.GET_cell_details", "configuration_management.GET_config", "configuration_management.PUT_config", "performance_management.POST_pm_jobs"]
+
+  cellId:
+    type: "string"
+    description: "NR cell identifier"
+    produced_by: ["network_information.GET_managedElements", "network_information.GET_cell_details"]
+    consumed_by: ["data_subscription.POST_info_jobs", "performance_management.POST_pm_jobs", "fault_management.POST_alarm_subscriptions"]
+
+  alarmId:
+    type: "string"
+    description: "Alarm record identifier"
+    produced_by: ["fault_management.GET_alarms"]
+    consumed_by: ["fault_management.GET_alarm_details", "fault_management.PATCH_alarm_ack"]
+
+  pmJobId:
+    type: "string"
+    description: "Performance management job identifier"
+    produced_by: ["performance_management.POST_pm_jobs"]
+    consumed_by: ["performance_management.GET_pm_jobs", "performance_management.DELETE_pm_jobs"]
+
+  # AI/ML
+  modelId:
+    type: "string"
+    description: "AI/ML model identifier"
+    produced_by: ["aiml_model_registration.POST_mlModels"]
+    consumed_by: ["aiml_model_registration.GET_mlModels", "aiml_model_registration.PUT_mlModels", "aiml_model_registration.DELETE_mlModels", "aiml_model_storage.POST_artifacts", "aiml_model_training.POST_training_jobs", "aiml_model_inference.POST_inference_jobs", "aiml_performance_monitoring.POST_subscriptions"]
+
+  artifactId:
+    type: "string"
+    description: "Model artifact storage identifier"
+    produced_by: ["aiml_model_storage.POST_artifacts"]
+    consumed_by: ["aiml_model_storage.GET_artifacts", "aiml_model_storage.DELETE_artifacts"]
+
+  trainingJobId:
+    type: "string"
+    description: "Model training job identifier"
+    produced_by: ["aiml_model_training.POST_training_jobs"]
+    consumed_by: ["aiml_model_training.GET_training_jobs", "aiml_model_training.DELETE_training_jobs"]
+
+  inferenceJobId:
+    type: "string"
+    description: "Model inference job identifier"
+    produced_by: ["aiml_model_inference.POST_inference_jobs"]
+    consumed_by: ["aiml_model_inference.GET_inference_jobs"]
+
+  # rApp Management
+  rAppId:
+    type: "string"
+    description: "rApp instance identifier"
+    produced_by: ["rapp_registration.POST_rapps"]
+    consumed_by: ["rapp_registration.GET_rapps", "rapp_registration.PUT_rapps", "rapp_registration.DELETE_rapps", "rapp_registration.GET_rapp_status"]
+
+# ============================================================
+# API NODES - All operations with their capabilities
+# ============================================================
+api_nodes:
+  # -----------------------------------------------------------
+  # SECTION 5.1: Service Management
+  # -----------------------------------------------------------
+  bootstrap:
+    category: "service_management"
+    spec_section: "5.1"
+    operations:
+      GET_bootstrap_info:
+        uri: "/bootstrap/v1/bootstrap-info"
+        method: "GET"
+        description: "Get bootstrap information and service endpoints"
+        produces: ["apiRoot", "serviceEndpoints"]
+        requires: []
+        idempotent: true
+
+  service_registration:
+    category: "service_management"
+    spec_section: "5.1"
+    operations:
+      POST_service_apis:
+        uri: "/capif-publish/v1/{apfId}/service-apis"
+        method: "POST"
+        description: "Register a new API service"
+        produces: ["serviceApiId", "apfId"]
+        requires: []
+        idempotent: false
+
+      GET_service_apis:
+        uri: "/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+        method: "GET"
+        description: "Get API service details"
+        produces: []
+        requires: ["apfId", "serviceApiId"]
+        idempotent: true
+
+      PUT_service_apis:
+        uri: "/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+        method: "PUT"
+        description: "Update API service"
+        produces: []
+        requires: ["apfId", "serviceApiId"]
+        idempotent: true
+
+      DELETE_service_apis:
+        uri: "/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+        method: "DELETE"
+        description: "Delete API service registration"
+        produces: []
+        requires: ["apfId", "serviceApiId"]
+        idempotent: true
+
+  service_discovery:
+    category: "service_management"
+    spec_section: "5.1"
+    operations:
+      GET_allServiceAPIs:
+        uri: "/capif-discover/v1/allServiceAPIs"
+        method: "GET"
+        description: "Discover all available service APIs"
+        produces: ["serviceApiId", "aefProfiles"]
+        requires: []
+        idempotent: true
+
+      POST_service_subscriptions:
+        uri: "/capif-events/v1/{subscriberId}/subscriptions"
+        method: "POST"
+        description: "Subscribe to service availability events"
+        produces: ["subscriptionId"]
+        requires: []
+        idempotent: false
+
+      DELETE_service_subscriptions:
+        uri: "/capif-events/v1/{subscriberId}/subscriptions/{subscriptionId}"
+        method: "DELETE"
+        description: "Unsubscribe from service availability events"
+        produces: []
+        requires: ["subscriptionId"]
+        idempotent: true
+
+  # -----------------------------------------------------------
+  # SECTION 5.2: Data Management
+  # -----------------------------------------------------------
+  data_registration:
+    category: "data_management"
+    spec_section: "5.2"
+    operations:
+      POST_producer_registrations:
+        uri: "/r1-data-management/v1/data-producer-registrations"
+        method: "POST"
+        description: "Register as data producer for DME type"
+        produces: ["registrationId", "infoTypeId"]
+        requires: []
+        idempotent: false
+
+      GET_producer_registrations:
+        uri: "/r1-data-management/v1/data-producer-registrations/{registrationId}"
+        method: "GET"
+        description: "Query data producer registration"
+        produces: []
+        requires: ["registrationId"]
+        idempotent: true
+
+      PUT_producer_registrations:
+        uri: "/r1-data-management/v1/data-producer-registrations/{registrationId}"
+        method: "PUT"
+        description: "Update data producer registration"
+        produces: []
+        requires: ["registrationId"]
+        idempotent: true
+
+      DELETE_producer_registrations:
+        uri: "/r1-data-management/v1/data-producer-registrations/{registrationId}"
+        method: "DELETE"
+        description: "Deregister data producer"
+        produces: []
+        requires: ["registrationId"]
+        idempotent: true
+
+  data_discovery:
+    category: "data_management"
+    spec_section: "5.2"
+    operations:
+      GET_info_types:
+        uri: "/r1-data-management/v1/info-types"
+        method: "GET"
+        description: "Discover available DME types"
+        produces: ["infoTypeId", "infoTypeSchema"]
+        requires: []
+        idempotent: true
+
+      GET_info_type_details:
+        uri: "/r1-data-management/v1/info-types/{infoTypeId}"
+        method: "GET"
+        description: "Get DME type information"
+        produces: ["infoTypeSchema"]
+        requires: ["infoTypeId"]
+        idempotent: true
+
+      POST_info_type_subscriptions:
+        uri: "/r1-data-management/v1/info-type-subscriptions"
+        method: "POST"
+        description: "Subscribe to DME type changes"
+        produces: ["subscriptionId"]
+        requires: []
+        idempotent: false
+
+  data_request:
+    category: "data_management"
+    spec_section: "5.2"
+    operations:
+      POST_info_jobs:
+        uri: "/r1-data-management/v1/info-jobs"
+        method: "POST"
+        description: "Request historical data"
+        produces: ["infoJobId"]
+        requires: ["infoTypeId"]
+        consumes_kpis: true
+        idempotent: false
+
+      GET_info_job_status:
+        uri: "/r1-data-management/v1/info-jobs/{infoJobId}/status"
+        method: "GET"
+        description: "Query data request status"
+        produces: ["jobStatus"]
+        requires: ["infoJobId"]
+        idempotent: true
+
+  data_subscription:
+    category: "data_management"
+    spec_section: "5.2"
+    operations:
+      POST_info_jobs:
+        uri: "/r1-data-management/v1/info-jobs"
+        method: "POST"
+        description: "Subscribe to real-time data stream"
+        produces: ["infoJobId", "subscriptionId"]
+        requires: ["infoTypeId"]
+        consumes_kpis: true
+        idempotent: false
+
+      GET_info_jobs:
+        uri: "/r1-data-management/v1/info-jobs/{infoJobId}"
+        method: "GET"
+        description: "Get data subscription details"
+        produces: []
+        requires: ["infoJobId"]
+        idempotent: true
+
+      PUT_info_jobs:
+        uri: "/r1-data-management/v1/info-jobs/{infoJobId}"
+        method: "PUT"
+        description: "Update data subscription parameters"
+        produces: []
+        requires: ["infoJobId"]
+        idempotent: true
+
+      DELETE_info_jobs:
+        uri: "/r1-data-management/v1/info-jobs/{infoJobId}"
+        method: "DELETE"
+        description: "Unsubscribe from data stream"
+        produces: []
+        requires: ["infoJobId"]
+        idempotent: true
+
+  data_offer:
+    category: "data_management"
+    spec_section: "5.2"
+    operations:
+      POST_data_offers:
+        uri: "/r1-data-management/v1/data-offers"
+        method: "POST"
+        description: "Create data offer"
+        produces: ["offerId"]
+        requires: ["infoTypeId"]
+        idempotent: false
+
+      GET_data_offers:
+        uri: "/r1-data-management/v1/data-offers/{offerId}"
+        method: "GET"
+        description: "Get data offer details"
+        produces: []
+        requires: ["offerId"]
+        idempotent: true
+
+      DELETE_data_offers:
+        uri: "/r1-data-management/v1/data-offers/{offerId}"
+        method: "DELETE"
+        description: "Terminate data offer"
+        produces: []
+        requires: ["offerId"]
+        idempotent: true
+
+  # -----------------------------------------------------------
+  # SECTION 5.3: A1 Services
+  # -----------------------------------------------------------
+  a1_policy_management:
+    category: "a1_services"
+    spec_section: "5.3"
+    operations:
+      GET_rics:
+        uri: "/a1-policy-management/v1/rics"
+        method: "GET"
+        description: "Get available Near-RT RICs"
+        produces: ["nearRtRicId", "ricCapabilities", "supportedPolicyTypes"]
+        requires: []
+        idempotent: true
+
+      GET_policytypes:
+        uri: "/a1-policy-management/v1/policy-types"
+        method: "GET"
+        description: "Get A1 policy types"
+        produces: ["policyTypeId", "policySchema"]
+        requires: []
+        idempotent: true
+
+      GET_policytype_details:
+        uri: "/a1-policy-management/v1/policy-types/{policyTypeId}"
+        method: "GET"
+        description: "Get A1 policy type schema"
+        produces: ["policySchema"]
+        requires: ["policyTypeId"]
+        idempotent: true
+
+      POST_policies:
+        uri: "/a1-policy-management/v1/policies"
+        method: "POST"
+        description: "Create A1 policy"
+        produces: ["policyId"]
+        requires: ["nearRtRicId", "policyTypeId"]
+        idempotent: false
+
+      GET_policies:
+        uri: "/a1-policy-management/v1/policies/{policyId}"
+        method: "GET"
+        description: "Get A1 policy details"
+        produces: []
+        requires: ["policyId"]
+        idempotent: true
+
+      PUT_policies:
+        uri: "/a1-policy-management/v1/policies/{policyId}"
+        method: "PUT"
+        description: "Update A1 policy"
+        produces: []
+        requires: ["policyId", "policyTypeId"]
+        idempotent: true
+
+      DELETE_policies:
+        uri: "/a1-policy-management/v1/policies/{policyId}"
+        method: "DELETE"
+        description: "Delete A1 policy"
+        produces: []
+        requires: ["policyId"]
+        idempotent: true
+
+      GET_policy_status:
+        uri: "/a1-policy-management/v1/policies/{policyId}/status"
+        method: "GET"
+        description: "Query A1 policy status"
+        produces: ["policyStatus"]
+        requires: ["policyId"]
+        idempotent: true
+
+  a1_enrichment_information:
+    category: "a1_services"
+    spec_section: "5.3"
+    operations:
+      POST_eitypes:
+        uri: "/r1-a1-ei/v1/eitypes"
+        method: "POST"
+        description: "Register EI type"
+        produces: ["eiTypeId"]
+        requires: []
+        idempotent: false
+
+      GET_eitypes:
+        uri: "/r1-a1-ei/v1/eitypes"
+        method: "GET"
+        description: "Get EI types"
+        produces: ["eiTypeId"]
+        requires: []
+        idempotent: true
+
+      DELETE_eitypes:
+        uri: "/r1-a1-ei/v1/eitypes/{eiTypeId}"
+        method: "DELETE"
+        description: "Deregister EI type"
+        produces: []
+        requires: ["eiTypeId"]
+        idempotent: true
+
+      POST_eijobs:
+        uri: "/r1-a1-ei/v1/eijobs"
+        method: "POST"
+        description: "Create EI job"
+        produces: ["eiJobId"]
+        requires: ["eiTypeId"]
+        idempotent: false
+
+  # -----------------------------------------------------------
+  # SECTION 5.4: RAN OAM
+  # -----------------------------------------------------------
+  network_information:
+    category: "ran_oam"
+    spec_section: "5.4"
+    operations:
+      GET_managedElements:
+        uri: "/r1-oam/v1/managedElements"
+        method: "GET"
+        description: "Query network elements (gNBs, cells)"
+        produces: ["managedElementId", "cellId", "gnbDuId"]
+        requires: []
+        idempotent: true
+
+      GET_cell_details:
+        uri: "/r1-oam/v1/managedElements/{managedElementId}/nrCellDu/{cellId}"
+        method: "GET"
+        description: "Get cell details"
+        produces: ["cellConfiguration"]
+        requires: ["managedElementId", "cellId"]
+        idempotent: true
+
+      GET_gnb_details:
+        uri: "/r1-oam/v1/managedElements/{managedElementId}/gnbDuFunction/{gnbDuId}"
+        method: "GET"
+        description: "Get gNB-DU details"
+        produces: ["gnbConfiguration"]
+        requires: ["managedElementId", "gnbDuId"]
+        idempotent: true
+
+  fault_management:
+    category: "ran_oam"
+    spec_section: "5.4"
+    operations:
+      GET_alarms:
+        uri: "/r1-oam/v1/alarmList/alarmRecords"
+        method: "GET"
+        description: "Query active alarms"
+        produces: ["alarmId", "alarmDetails"]
+        requires: []
+        idempotent: true
+
+      GET_alarm_details:
+        uri: "/r1-oam/v1/alarmList/alarmRecords/{alarmId}"
+        method: "GET"
+        description: "Get alarm details"
+        produces: ["alarmDetails"]
+        requires: ["alarmId"]
+        idempotent: true
+
+      PATCH_alarm_ack:
+        uri: "/r1-oam/v1/alarmList/alarmRecords/{alarmId}"
+        method: "PATCH"
+        description: "Acknowledge alarm"
+        produces: []
+        requires: ["alarmId"]
+        idempotent: true
+
+      POST_alarm_subscriptions:
+        uri: "/r1-oam/v1/alarmList/subscriptions"
+        method: "POST"
+        description: "Subscribe to alarm notifications"
+        produces: ["subscriptionId"]
+        requires: []
+        optional_inputs: ["cellId", "severity"]
+        idempotent: false
+
+  performance_management:
+    category: "ran_oam"
+    spec_section: "5.4"
+    operations:
+      GET_measData:
+        uri: "/r1-oam/v1/measDataCollection"
+        method: "GET"
+        description: "Query performance measurement data"
+        produces: ["measurementData"]
+        requires: []
+        consumes_kpis: true
+        idempotent: true
+
+      POST_pm_jobs:
+        uri: "/r1-oam/v1/pmJobs"
+        method: "POST"
+        description: "Create PM job"
+        produces: ["pmJobId"]
+        requires: ["measurementTypes"]
+        optional_inputs: ["managedElementId", "cellId"]
+        consumes_kpis: true
+        idempotent: false
+
+      GET_pm_jobs:
+        uri: "/r1-oam/v1/pmJobs/{pmJobId}"
+        method: "GET"
+        description: "Get PM job details"
+        produces: []
+        requires: ["pmJobId"]
+        idempotent: true
+
+      DELETE_pm_jobs:
+        uri: "/r1-oam/v1/pmJobs/{pmJobId}"
+        method: "DELETE"
+        description: "Delete PM job"
+        produces: []
+        requires: ["pmJobId"]
+        idempotent: true
+
+  configuration_management:
+    category: "ran_oam"
+    spec_section: "5.4"
+    operations:
+      GET_schemas:
+        uri: "/r1-oam/v1/schemas"
+        method: "GET"
+        description: "Get configuration schemas"
+        produces: ["configSchemas"]
+        requires: []
+        idempotent: true
+
+      GET_config:
+        uri: "/r1-oam/v1/managedElements/{managedElementId}"
+        method: "GET"
+        description: "Read configuration"
+        produces: ["configuration"]
+        requires: ["managedElementId"]
+        idempotent: true
+
+      PUT_config:
+        uri: "/r1-oam/v1/managedElements/{managedElementId}"
+        method: "PUT"
+        description: "Write full configuration"
+        produces: []
+        requires: ["managedElementId", "configuration"]
+        idempotent: true
+
+      PATCH_config:
+        uri: "/r1-oam/v1/managedElements/{managedElementId}"
+        method: "PATCH"
+        description: "Patch configuration"
+        produces: []
+        requires: ["managedElementId"]
+        idempotent: true
+
+  # -----------------------------------------------------------
+  # SECTION 5.5: O2 Services
+  # -----------------------------------------------------------
+  o2_infrastructure_management:
+    category: "o2_services"
+    spec_section: "5.5"
+    operations:
+      GET_resourcePools:
+        uri: "/o2ims-infrastructureInventory/v1/resourcePools"
+        method: "GET"
+        description: "Query O-Cloud resource pools"
+        produces: ["resourcePoolId"]
+        requires: []
+        idempotent: true
+
+      GET_resourcePool_details:
+        uri: "/o2ims-infrastructureInventory/v1/resourcePools/{resourcePoolId}"
+        method: "GET"
+        description: "Get resource pool details"
+        produces: ["resourcePoolDetails"]
+        requires: ["resourcePoolId"]
+        idempotent: true
+
+      GET_resources:
+        uri: "/o2ims-infrastructureInventory/v1/resourcePools/{resourcePoolId}/resources"
+        method: "GET"
+        description: "Query resources in pool"
+        produces: ["resources"]
+        requires: ["resourcePoolId"]
+        idempotent: true
+
+      POST_o2_alarm_subscriptions:
+        uri: "/o2ims-infrastructureMonitoring/v1/alarmSubscriptions"
+        method: "POST"
+        description: "Subscribe to infrastructure alarms"
+        produces: ["subscriptionId"]
+        requires: []
+        idempotent: false
+
+  o2_deployment_management:
+    category: "o2_services"
+    spec_section: "5.5"
+    operations:
+      GET_deploymentManagers:
+        uri: "/o2dms/v1/deploymentManagers"
+        method: "GET"
+        description: "Get deployment managers"
+        produces: ["deploymentManagerId"]
+        requires: []
+        idempotent: true
+
+      GET_nfDeployments:
+        uri: "/o2dms/v1/deploymentManagers/{deploymentManagerId}/nfDeployments"
+        method: "GET"
+        description: "Query NF deployments"
+        produces: ["nfDeploymentId"]
+        requires: ["deploymentManagerId"]
+        idempotent: true
+
+      POST_nfDeployments:
+        uri: "/o2dms/v1/deploymentManagers/{deploymentManagerId}/nfDeployments"
+        method: "POST"
+        description: "Create NF deployment"
+        produces: ["nfDeploymentId"]
+        requires: ["deploymentManagerId"]
+        idempotent: false
+
+  # -----------------------------------------------------------
+  # SECTION 5.6: AI/ML Workflow
+  # -----------------------------------------------------------
+  aiml_model_registration:
+    category: "ai_ml"
+    spec_section: "5.6"
+    operations:
+      POST_mlModels:
+        uri: "/r1-aiml/v1/mlModels"
+        method: "POST"
+        description: "Register AI/ML model"
+        produces: ["modelId"]
+        requires: []
+        idempotent: false
+
+      GET_mlModels:
+        uri: "/r1-aiml/v1/mlModels/{modelId}"
+        method: "GET"
+        description: "Get AI/ML model details"
+        produces: []
+        requires: ["modelId"]
+        idempotent: true
+
+      PUT_mlModels:
+        uri: "/r1-aiml/v1/mlModels/{modelId}"
+        method: "PUT"
+        description: "Update model registration"
+        produces: []
+        requires: ["modelId"]
+        idempotent: true
+
+      DELETE_mlModels:
+        uri: "/r1-aiml/v1/mlModels/{modelId}"
+        method: "DELETE"
+        description: "Deregister AI/ML model"
+        produces: []
+        requires: ["modelId"]
+        idempotent: true
+
+  aiml_model_storage:
+    category: "ai_ml"
+    spec_section: "5.6"
+    operations:
+      POST_artifacts:
+        uri: "/r1-aiml/v1/mlModelArtifacts"
+        method: "POST"
+        description: "Store AI/ML model artifact"
+        produces: ["artifactId"]
+        requires: ["modelId"]
+        idempotent: false
+
+      GET_artifacts:
+        uri: "/r1-aiml/v1/mlModelArtifacts/{artifactId}"
+        method: "GET"
+        description: "Get model artifact"
+        produces: []
+        requires: ["artifactId"]
+        idempotent: true
+
+      DELETE_artifacts:
+        uri: "/r1-aiml/v1/mlModelArtifacts/{artifactId}"
+        method: "DELETE"
+        description: "Delete AI/ML model artifact"
+        produces: []
+        requires: ["artifactId"]
+        idempotent: true
+
+  aiml_model_discovery:
+    category: "ai_ml"
+    spec_section: "5.6"
+    operations:
+      GET_mlModels:
+        uri: "/r1-aiml/v1/mlModels"
+        method: "GET"
+        description: "Discover AI/ML models"
+        produces: ["modelId", "modelCapabilities"]
+        requires: []
+        idempotent: true
+
+  aiml_model_training:
+    category: "ai_ml"
+    spec_section: "5.6"
+    operations:
+      POST_training_jobs:
+        uri: "/r1-aiml/v1/mlTrainingJobs"
+        method: "POST"
+        description: "Request model training"
+        produces: ["trainingJobId"]
+        requires: ["modelId"]
+        idempotent: false
+
+      GET_training_jobs:
+        uri: "/r1-aiml/v1/mlTrainingJobs/{trainingJobId}"
+        method: "GET"
+        description: "Query training job status"
+        produces: ["trainingStatus"]
+        requires: ["trainingJobId"]
+        idempotent: true
+
+      DELETE_training_jobs:
+        uri: "/r1-aiml/v1/mlTrainingJobs/{trainingJobId}"
+        method: "DELETE"
+        description: "Cancel model training"
+        produces: []
+        requires: ["trainingJobId"]
+        idempotent: true
+
+  aiml_performance_monitoring:
+    category: "ai_ml"
+    spec_section: "5.6"
+    operations:
+      POST_subscriptions:
+        uri: "/r1-aiml/v1/mlPerformanceSubscriptions"
+        method: "POST"
+        description: "Subscribe to model performance"
+        produces: ["subscriptionId"]
+        requires: ["modelId"]
+        idempotent: false
+
+      GET_subscriptions:
+        uri: "/r1-aiml/v1/mlPerformanceSubscriptions/{subscriptionId}"
+        method: "GET"
+        description: "Get performance subscription"
+        produces: []
+        requires: ["subscriptionId"]
+        idempotent: true
+
+      DELETE_subscriptions:
+        uri: "/r1-aiml/v1/mlPerformanceSubscriptions/{subscriptionId}"
+        method: "DELETE"
+        description: "Unsubscribe from performance"
+        produces: []
+        requires: ["subscriptionId"]
+        idempotent: true
+
+  aiml_model_inference:
+    category: "ai_ml"
+    spec_section: "5.6"
+    operations:
+      GET_capabilities:
+        uri: "/r1-aiml/v1/mlInferenceCapabilities"
+        method: "GET"
+        description: "Query inference capabilities"
+        produces: ["inferenceCapabilities"]
+        requires: []
+        idempotent: true
+
+      POST_inference_jobs:
+        uri: "/r1-aiml/v1/mlInferenceJobs"
+        method: "POST"
+        description: "Request model inference"
+        produces: ["inferenceJobId", "prediction"]
+        requires: ["modelId"]
+        idempotent: false
+
+      GET_inference_jobs:
+        uri: "/r1-aiml/v1/mlInferenceJobs/{inferenceJobId}"
+        method: "GET"
+        description: "Get inference result"
+        produces: ["prediction"]
+        requires: ["inferenceJobId"]
+        idempotent: true
+
+  aiml_training_capability:
+    category: "ai_ml"
+    spec_section: "5.6"
+    operations:
+      POST_capabilities:
+        uri: "/r1-aiml/v1/mlTrainingCapabilities"
+        method: "POST"
+        description: "Register training capability"
+        produces: ["capabilityId"]
+        requires: []
+        idempotent: false
+
+      GET_capabilities:
+        uri: "/r1-aiml/v1/mlTrainingCapabilities"
+        method: "GET"
+        description: "Query training capabilities"
+        produces: ["trainingCapabilities"]
+        requires: []
+        idempotent: true
+
+  # -----------------------------------------------------------
+  # SECTION 5.7: rApp Management
+  # -----------------------------------------------------------
+  rapp_registration:
+    category: "rapp_management"
+    spec_section: "5.7"
+    operations:
+      POST_rapps:
+        uri: "/r1-rapp-management/v1/rapps"
+        method: "POST"
+        description: "Register rApp"
+        produces: ["rAppId"]
+        requires: []
+        idempotent: false
+
+      GET_rapps:
+        uri: "/r1-rapp-management/v1/rapps/{rAppId}"
+        method: "GET"
+        description: "Get rApp details"
+        produces: []
+        requires: ["rAppId"]
+        idempotent: true
+
+      GET_all_rapps:
+        uri: "/r1-rapp-management/v1/rapps"
+        method: "GET"
+        description: "List all rApps"
+        produces: ["rAppId"]
+        requires: []
+        idempotent: true
+
+      PUT_rapps:
+        uri: "/r1-rapp-management/v1/rapps/{rAppId}"
+        method: "PUT"
+        description: "Update rApp registration"
+        produces: []
+        requires: ["rAppId"]
+        idempotent: true
+
+      DELETE_rapps:
+        uri: "/r1-rapp-management/v1/rapps/{rAppId}"
+        method: "DELETE"
+        description: "Deregister rApp"
+        produces: []
+        requires: ["rAppId"]
+        idempotent: true
+
+      GET_rapp_status:
+        uri: "/r1-rapp-management/v1/rapps/{rAppId}/status"
+        method: "GET"
+        description: "Get rApp status"
+        produces: ["rAppStatus"]
+        requires: ["rAppId"]
+        idempotent: true
+
+# ============================================================
+# RELATIONSHIPS - How APIs connect to each other
+# ============================================================
+relationships:
+  # -----------------------------------------------------------
+  # Data Management Flow
+  # -----------------------------------------------------------
+  - from: "data_discovery.GET_info_types"
+    to: "data_subscription.POST_info_jobs"
+    type: "ENABLES"
+    data_flow: "infoTypeId"
+    description: "Must discover data types before subscribing"
+    mandatory: true
+
+  - from: "data_discovery.GET_info_types"
+    to: "data_request.POST_info_jobs"
+    type: "ENABLES"
+    data_flow: "infoTypeId"
+    description: "Must discover data types before requesting"
+    mandatory: true
+
+  - from: "data_discovery.GET_info_types"
+    to: "data_offer.POST_data_offers"
+    type: "ENABLES"
+    data_flow: "infoTypeId"
+    description: "Must know data type before offering"
+    mandatory: true
+
+  # -----------------------------------------------------------
+  # A1 Policy Management Flow
+  # -----------------------------------------------------------
+  - from: "a1_policy_management.GET_rics"
+    to: "a1_policy_management.POST_policies"
+    type: "REQUIRES"
+    data_flow: "nearRtRicId"
+    description: "Must know target RIC before creating policy"
+    mandatory: true
+
+  - from: "a1_policy_management.GET_policytypes"
+    to: "a1_policy_management.POST_policies"
+    type: "REQUIRES"
+    data_flow: "policyTypeId"
+    description: "Must know policy type schema before creating"
+    mandatory: true
+
+  - from: "a1_policy_management.POST_policies"
+    to: "a1_policy_management.GET_policy_status"
+    type: "ENABLES"
+    data_flow: "policyId"
+    description: "Policy must exist to check status"
+    mandatory: true
+
+  - from: "a1_policy_management.POST_policies"
+    to: "a1_policy_management.PUT_policies"
+    type: "ENABLES"
+    data_flow: "policyId"
+    description: "Policy must exist to update"
+    mandatory: true
+
+  - from: "a1_policy_management.POST_policies"
+    to: "a1_policy_management.DELETE_policies"
+    type: "ENABLES"
+    data_flow: "policyId"
+    description: "Policy must exist to delete"
+    mandatory: true
+
+  # -----------------------------------------------------------
+  # A1 Enrichment Information Flow
+  # -----------------------------------------------------------
+  - from: "a1_enrichment_information.GET_eitypes"
+    to: "a1_enrichment_information.POST_eijobs"
+    type: "ENABLES"
+    data_flow: "eiTypeId"
+    description: "Must know EI type before creating job"
+    mandatory: true
+
+  # -----------------------------------------------------------
+  # AI/ML Workflow Flow
+  # -----------------------------------------------------------
+  - from: "aiml_model_registration.POST_mlModels"
+    to: "aiml_model_storage.POST_artifacts"
+    type: "REQUIRES"
+    data_flow: "modelId"
+    description: "Model must be registered before storing artifacts"
+    mandatory: true
+
+  - from: "aiml_model_registration.POST_mlModels"
+    to: "aiml_model_training.POST_training_jobs"
+    type: "REQUIRES"
+    data_flow: "modelId"
+    description: "Model must be registered before training"
+    mandatory: true
+
+  - from: "aiml_model_storage.POST_artifacts"
+    to: "aiml_model_inference.POST_inference_jobs"
+    type: "ENABLES"
+    data_flow: "artifactId"
+    description: "Model artifacts needed for inference"
+    mandatory: false
+
+  - from: "aiml_model_registration.POST_mlModels"
+    to: "aiml_model_inference.POST_inference_jobs"
+    type: "REQUIRES"
+    data_flow: "modelId"
+    description: "Model must be registered before inference"
+    mandatory: true
+
+  - from: "aiml_model_registration.POST_mlModels"
+    to: "aiml_performance_monitoring.POST_subscriptions"
+    type: "REQUIRES"
+    data_flow: "modelId"
+    description: "Model must exist to monitor performance"
+    mandatory: true
+
+  - from: "aiml_model_training.POST_training_jobs"
+    to: "aiml_model_training.GET_training_jobs"
+    type: "ENABLES"
+    data_flow: "trainingJobId"
+    description: "Job must exist to check status"
+    mandatory: true
+
+  # -----------------------------------------------------------
+  # Network Information Flow
+  # -----------------------------------------------------------
+  - from: "network_information.GET_managedElements"
+    to: "network_information.GET_cell_details"
+    type: "ENABLES"
+    data_flow: "managedElementId,cellId"
+    description: "Must discover cells before querying details"
+    mandatory: true
+
+  - from: "network_information.GET_managedElements"
+    to: "configuration_management.GET_config"
+    type: "ENABLES"
+    data_flow: "managedElementId"
+    description: "Must know element ID for configuration"
+    mandatory: true
+
+  - from: "network_information.GET_managedElements"
+    to: "configuration_management.PUT_config"
+    type: "ENABLES"
+    data_flow: "managedElementId"
+    description: "Must know element ID to write config"
+    mandatory: true
+
+  - from: "network_information.GET_managedElements"
+    to: "performance_management.POST_pm_jobs"
+    type: "ENABLES"
+    data_flow: "managedElementId,cellId"
+    description: "Need object instances for PM job"
+    mandatory: false
+
+  # -----------------------------------------------------------
+  # Fault Management Flow
+  # -----------------------------------------------------------
+  - from: "fault_management.GET_alarms"
+    to: "fault_management.GET_alarm_details"
+    type: "ENABLES"
+    data_flow: "alarmId"
+    description: "Must find alarm to get details"
+    mandatory: true
+
+  - from: "fault_management.GET_alarms"
+    to: "fault_management.PATCH_alarm_ack"
+    type: "ENABLES"
+    data_flow: "alarmId"
+    description: "Must find alarm to acknowledge"
+    mandatory: true
+
+  # -----------------------------------------------------------
+  # rApp Management Flow
+  # -----------------------------------------------------------
+  - from: "rapp_registration.POST_rapps"
+    to: "rapp_registration.GET_rapp_status"
+    type: "ENABLES"
+    data_flow: "rAppId"
+    description: "rApp must exist to check status"
+    mandatory: true
+
+  - from: "rapp_registration.POST_rapps"
+    to: "service_registration.POST_service_apis"
+    type: "ENABLES"
+    data_flow: "rAppId"
+    description: "rApp should be registered before publishing APIs"
+    mandatory: false
+
+  # -----------------------------------------------------------
+  # O2 Deployment Flow
+  # -----------------------------------------------------------
+  - from: "o2_deployment_management.GET_deploymentManagers"
+    to: "o2_deployment_management.POST_nfDeployments"
+    type: "REQUIRES"
+    data_flow: "deploymentManagerId"
+    description: "Must know deployment manager to create deployment"
+    mandatory: true
+
+  # -----------------------------------------------------------
+  # Cross-Domain Informational Relationships
+  # -----------------------------------------------------------
+  - from: "data_subscription.POST_info_jobs"
+    to: "a1_policy_management.POST_policies"
+    type: "INFORMS"
+    data_flow: "kpi_data"
+    description: "KPI data from subscriptions informs policy decisions"
+    mandatory: false
+
+  - from: "performance_management.GET_measData"
+    to: "a1_policy_management.POST_policies"
+    type: "INFORMS"
+    data_flow: "measurementData"
+    description: "PM data informs policy parameter selection"
+    mandatory: false
+
+  - from: "fault_management.GET_alarms"
+    to: "configuration_management.PATCH_config"
+    type: "INFORMS"
+    data_flow: "alarmDetails"
+    description: "Alarms may inform configuration changes"
+    mandatory: false
+
+# ============================================================
+# CONSTRAINTS - Validation rules for workflows
+# ============================================================
+constraints:
+  - name: "policy_requires_ric"
+    type: "prerequisite"
+    rule: |
+      IF workflow contains "a1_policy_management.POST_policies"
+      THEN workflow must contain "a1_policy_management.GET_rics" BEFORE it
+    error_message: "Cannot create A1 policy without first querying available RICs"
+    severity: "error"
+
+  - name: "policy_requires_policytype"
+    type: "prerequisite"
+    rule: |
+      IF workflow contains "a1_policy_management.POST_policies"
+      THEN workflow must contain "a1_policy_management.GET_policytypes" BEFORE it
+    error_message: "Cannot create A1 policy without first querying policy types"
+    severity: "error"
+
+  - name: "subscription_requires_discovery"
+    type: "prerequisite"
+    rule: |
+      IF workflow contains "data_subscription.POST_info_jobs"
+      THEN workflow must contain "data_discovery.GET_info_types" BEFORE it
+    error_message: "Cannot subscribe to data without first discovering available types"
+    severity: "error"
+
+  - name: "model_artifact_requires_registration"
+    type: "prerequisite"
+    rule: |
+      IF workflow contains "aiml_model_storage.POST_artifacts"
+      THEN workflow must contain "aiml_model_registration.POST_mlModels" BEFORE it
+    error_message: "Cannot store model artifact without first registering the model"
+    severity: "error"
+
+  - name: "training_requires_model"
+    type: "prerequisite"
+    rule: |
+      IF workflow contains "aiml_model_training.POST_training_jobs"
+      THEN workflow must contain "aiml_model_registration.POST_mlModels" BEFORE it
+    error_message: "Cannot start training without a registered model"
+    severity: "error"
+
+  - name: "inference_requires_model"
+    type: "prerequisite"
+    rule: |
+      IF workflow contains "aiml_model_inference.POST_inference_jobs"
+      THEN workflow must contain "aiml_model_registration.POST_mlModels" BEFORE it
+    error_message: "Cannot run inference without a registered model"
+    severity: "error"
+
+  - name: "ei_job_requires_type"
+    type: "prerequisite"
+    rule: |
+      IF workflow contains "a1_enrichment_information.POST_eijobs"
+      THEN workflow must contain "a1_enrichment_information.GET_eitypes" BEFORE it
+    error_message: "Cannot create EI job without knowing available EI types"
+    severity: "error"
+
+  - name: "nf_deployment_requires_manager"
+    type: "prerequisite"
+    rule: |
+      IF workflow contains "o2_deployment_management.POST_nfDeployments"
+      THEN workflow must contain "o2_deployment_management.GET_deploymentManagers" BEFORE it
+    error_message: "Cannot create NF deployment without knowing deployment manager"
+    severity: "error"
+
+  - name: "no_duplicate_subscriptions"
+    type: "state_check"
+    rule: |
+      IF workflow contains multiple "data_subscription.POST_info_jobs" with same infoTypeId
+      THEN emit warning about potential duplicate subscriptions
+    error_message: "Multiple subscriptions to same data type may be redundant"
+    severity: "warning"
+
+  - name: "verify_before_delete"
+    type: "best_practice"
+    rule: |
+      IF workflow contains "a1_policy_management.DELETE_policies"
+      THEN workflow should contain "a1_policy_management.GET_policy_status" BEFORE it
+    error_message: "Should verify policy status before deletion"
+    severity: "warning"
+
+# ============================================================
+# WORKFLOW PATTERNS - Common valid sequences
+# ============================================================
+workflow_patterns:
+  # -----------------------------------------------------------
+  # Data Acquisition Patterns
+  # -----------------------------------------------------------
+  data_acquisition:
+    name: "Data Acquisition Pipeline"
+    description: "Standard pattern for subscribing to network data"
+    intent_patterns:
+      - "monitor.*data"
+      - "subscribe to.*KPIs"
+      - "get.*measurements"
+      - "stream.*metrics"
+    sequence:
+      - step: 1
+        api: "data_discovery.GET_info_types"
+        purpose: "Discover available data types"
+      - step: 2
+        api: "data_subscription.POST_info_jobs"
+        purpose: "Subscribe to data stream"
+        uses_from_previous: ["infoTypeId"]
+    outputs: ["infoJobId", "subscriptionId"]
+
+  # -----------------------------------------------------------
+  # A1 Policy Patterns
+  # -----------------------------------------------------------
+  policy_deployment:
+    name: "A1 Policy Deployment"
+    description: "Standard pattern for creating A1 policy"
+    intent_patterns:
+      - "create.*policy"
+      - "set.*QoS"
+      - "configure.*load balancing"
+      - "enable.*traffic steering"
+    sequence:
+      - step: 1
+        api: "a1_policy_management.GET_rics"
+        purpose: "Get available Near-RT RICs"
+      - step: 2
+        api: "a1_policy_management.GET_policytypes"
+        purpose: "Get supported policy types"
+      - step: 3
+        api: "a1_policy_management.POST_policies"
+        purpose: "Create the policy"
+        uses_from_previous: ["nearRtRicId", "policyTypeId"]
+      - step: 4
+        api: "a1_policy_management.GET_policy_status"
+        purpose: "Verify policy deployment status"
+        uses_from_previous: ["policyId"]
+    outputs: ["policyId", "policyStatus"]
+
+  policy_update:
+    name: "A1 Policy Update"
+    description: "Pattern for updating existing A1 policy"
+    intent_patterns:
+      - "update.*policy"
+      - "modify.*QoS"
+      - "change.*thresholds"
+    sequence:
+      - step: 1
+        api: "a1_policy_management.GET_policies"
+        purpose: "Get current policy details"
+      - step: 2
+        api: "a1_policy_management.PUT_policies"
+        purpose: "Update policy parameters"
+        uses_from_previous: ["policyId"]
+      - step: 3
+        api: "a1_policy_management.GET_policy_status"
+        purpose: "Verify update took effect"
+        uses_from_previous: ["policyId"]
+
+  policy_lifecycle:
+    name: "A1 Policy Full Lifecycle"
+    description: "Create, verify, and eventually remove policy"
+    intent_patterns:
+      - "manage.*policy lifecycle"
+      - "temporary policy"
+    sequence:
+      - step: 1
+        api: "a1_policy_management.GET_rics"
+        purpose: "Get available RICs"
+      - step: 2
+        api: "a1_policy_management.GET_policytypes"
+        purpose: "Get policy types"
+      - step: 3
+        api: "a1_policy_management.POST_policies"
+        purpose: "Create policy"
+      - step: 4
+        api: "a1_policy_management.GET_policy_status"
+        purpose: "Monitor policy effectiveness"
+      - step: 5
+        api: "a1_policy_management.DELETE_policies"
+        purpose: "Remove policy when done"
+        conditional: true
+
+  # -----------------------------------------------------------
+  # AI/ML Patterns
+  # -----------------------------------------------------------
+  ml_model_deployment:
+    name: "ML Model Deployment"
+    description: "Register, store, and prepare model for inference"
+    intent_patterns:
+      - "deploy.*model"
+      - "register.*AI"
+      - "upload.*ML model"
+    sequence:
+      - step: 1
+        api: "aiml_model_registration.POST_mlModels"
+        purpose: "Register model in catalog"
+      - step: 2
+        api: "aiml_model_storage.POST_artifacts"
+        purpose: "Upload model artifact"
+        uses_from_previous: ["modelId"]
+      - step: 3
+        api: "aiml_performance_monitoring.POST_subscriptions"
+        purpose: "Set up performance monitoring"
+        uses_from_previous: ["modelId"]
+    outputs: ["modelId", "artifactId"]
+
+  ml_training_pipeline:
+    name: "ML Model Training"
+    description: "Train or retrain ML model"
+    intent_patterns:
+      - "train.*model"
+      - "retrain.*AI"
+      - "improve.*model"
+    sequence:
+      - step: 1
+        api: "aiml_model_registration.POST_mlModels"
+        purpose: "Register model (if new)"
+        conditional: true
+      - step: 2
+        api: "aiml_model_training.POST_training_jobs"
+        purpose: "Start training job"
+        uses_from_previous: ["modelId"]
+      - step: 3
+        api: "aiml_model_training.GET_training_jobs"
+        purpose: "Monitor training progress"
+        uses_from_previous: ["trainingJobId"]
+      - step: 4
+        api: "aiml_model_storage.POST_artifacts"
+        purpose: "Store trained model"
+        uses_from_previous: ["modelId"]
+
+  ml_inference:
+    name: "ML Model Inference"
+    description: "Request prediction from deployed model"
+    intent_patterns:
+      - "predict.*"
+      - "get.*inference"
+      - "run.*model"
+    sequence:
+      - step: 1
+        api: "aiml_model_discovery.GET_mlModels"
+        purpose: "Find available models"
+      - step: 2
+        api: "aiml_model_inference.POST_inference_jobs"
+        purpose: "Request inference"
+        uses_from_previous: ["modelId"]
+      - step: 3
+        api: "aiml_model_inference.GET_inference_jobs"
+        purpose: "Get prediction result"
+        uses_from_previous: ["inferenceJobId"]
+        conditional: true
+
+  # -----------------------------------------------------------
+  # Troubleshooting Patterns
+  # -----------------------------------------------------------
+  coverage_diagnostic:
+    name: "Coverage Issue Diagnosis"
+    description: "Diagnose RF/coverage issues using KPIs"
+    intent_patterns:
+      - "diagnose.*coverage"
+      - "poor signal"
+      - "RSRP.*low"
+      - "coverage hole"
+    sequence:
+      - step: 1
+        api: "data_discovery.GET_info_types"
+        purpose: "Find coverage KPI data types"
+      - step: 2
+        api: "data_subscription.POST_info_jobs"
+        purpose: "Subscribe to coverage KPIs"
+        kpis: ["rsrp_dbm", "rsrq_db", "sinr_db"]
+      - step: 3
+        api: "network_information.GET_managedElements"
+        purpose: "Get cell configuration"
+      - step: 4
+        api: "fault_management.GET_alarms"
+        purpose: "Check for related alarms"
+    diagnostic_type: "coverage"
+
+  capacity_diagnostic:
+    name: "Capacity Issue Diagnosis"
+    description: "Diagnose cell congestion/capacity issues"
+    intent_patterns:
+      - "diagnose.*capacity"
+      - "cell.*congested"
+      - "PRB.*high"
+      - "throughput.*low"
+    sequence:
+      - step: 1
+        api: "data_discovery.GET_info_types"
+        purpose: "Find capacity KPI data types"
+      - step: 2
+        api: "data_subscription.POST_info_jobs"
+        purpose: "Subscribe to capacity KPIs"
+        kpis: ["prb_utilization_dl_pct", "active_ues", "throughput_dl_mbps"]
+      - step: 3
+        api: "network_information.GET_managedElements"
+        purpose: "Get neighbor cell info"
+      - step: 4
+        api: "a1_policy_management.GET_rics"
+        purpose: "Prepare for load balancing"
+      - step: 5
+        api: "a1_policy_management.GET_policytypes"
+        purpose: "Find load balancing policy type"
+    diagnostic_type: "capacity"
+    leads_to: "policy_deployment"
+
+  alarm_remediation:
+    name: "Alarm Remediation"
+    description: "Respond to and remediate alarms"
+    intent_patterns:
+      - "handle.*alarm"
+      - "fix.*fault"
+      - "resolve.*issue"
+    sequence:
+      - step: 1
+        api: "fault_management.GET_alarms"
+        purpose: "Get active alarms"
+      - step: 2
+        api: "fault_management.GET_alarm_details"
+        purpose: "Analyze alarm cause"
+        uses_from_previous: ["alarmId"]
+      - step: 3
+        api: "network_information.GET_cell_details"
+        purpose: "Get affected resource details"
+      - step: 4
+        api: "fault_management.PATCH_alarm_ack"
+        purpose: "Acknowledge alarm being worked"
+        uses_from_previous: ["alarmId"]
+
+  # -----------------------------------------------------------
+  # rApp Lifecycle Patterns
+  # -----------------------------------------------------------
+  rapp_onboarding:
+    name: "rApp Onboarding"
+    description: "Complete rApp registration and service setup"
+    intent_patterns:
+      - "onboard.*rApp"
+      - "register.*application"
+      - "deploy.*rApp"
+    sequence:
+      - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Get SMO endpoints"
+      - step: 2
+        api: "rapp_registration.POST_rapps"
+        purpose: "Register rApp"
+      - step: 3
+        api: "service_registration.POST_service_apis"
+        purpose: "Publish rApp APIs"
+        uses_from_previous: ["rAppId"]
+      - step: 4
+        api: "rapp_registration.GET_rapp_status"
+        purpose: "Verify registration"
+        uses_from_previous: ["rAppId"]
+
+  # -----------------------------------------------------------
+  # Monitoring Patterns
+  # -----------------------------------------------------------
+  comprehensive_monitoring:
+    name: "Comprehensive Cell Monitoring"
+    description: "Set up complete monitoring for a cell"
+    intent_patterns:
+      - "monitor.*cell"
+      - "watch.*network"
+      - "setup.*monitoring"
+    sequence:
+      - step: 1
+        api: "data_discovery.GET_info_types"
+        purpose: "Discover available metrics"
+      - step: 2
+        api: "data_subscription.POST_info_jobs"
+        purpose: "Subscribe to KPIs"
+      - step: 3
+        api: "fault_management.POST_alarm_subscriptions"
+        purpose: "Subscribe to alarms"
+      - step: 4
+        api: "performance_management.POST_pm_jobs"
+        purpose: "Create PM job for detailed metrics"

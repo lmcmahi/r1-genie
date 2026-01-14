@@ -24,7 +24,7 @@
 #   - DME Type Discovery:    /data-discovery/v2/dme-types
 #   - Data Access (Jobs):    /data-access/v1/data-jobs
 #   - Data Producer:         /data-producer/v1/registrations
-#   - A1 Policy:             /r1-a1-policy-management/v1/policies
+#   - A1 Policy:             /a1-policy-management/v1/policies
 #   - AI/ML:                 /r1-aiml/v1/mlModels
 #   - rApp Management:       /r1-rapp-management/v1/rapps
 # =========================================================================
@@ -32,7 +32,7 @@
 # SECTION 5.1: Service Management and Exposure (CAPIF-aligned)
 bootstrap:
   - name: "Get bootstrap information"
-    uri: "{apiRoot}/r1-bootstrap/v1/bootstrap-info"
+    uri: "{apiRoot}/bootstrap/v1/bootstrap-info"
     method: "GET"
     response_code: 200
     example_payload: null
@@ -41,7 +41,7 @@ bootstrap:
       serviceEndpoints:
         capifPublish: "/capif-publish/v1"
         capifDiscover: "/capif-discover/v1"
-        a1PolicyManagement: "/r1-a1-policy-management/v1"
+        a1PolicyManagement: "/a1-policy-management/v1"
         dataManagement: "/r1-data-management/v1"
 
 service_registration:
@@ -147,7 +147,7 @@ service_discovery:
 #   - dataJobId: Data job identifier (replaces infoJobId)
 #   - DataJobInfo: Schema for data job creation
 #   - dataDeliveryMode: CONTINUOUS | ONE_TIME
-#   - dataDeliveryMethod: PUSH_HTTP | PULL_HTTP | STREAMING
+#   - dataDeliveryMethod: PUSH_HTTP | PULL_HTTP | STREAMING_KAFKA
 
 # --- Data Producer Registration ---
 data_producer_registration:
@@ -173,7 +173,7 @@ data_producer_registration:
                 type: "array"
                 items:
                   type: "string"
-          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING"]
+          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING_KAFKA"]
           dataDeliverySchemaId: "coverage-kpi-delivery-schema-v1"
       jobCallbackUri: "http://rapp.example.com/data-producer/job-callback"
 
@@ -191,7 +191,7 @@ data_producer_registration:
       producerId: "producer-001"
       supportedDmeTypes:
         - dmeTypeId: "oran:coverage-kpis:1.0.0"
-          supportedDeliveryMethods: ["PUSH_HTTP", "PULL_HTTP", "STREAMING"]
+          supportedDeliveryMethods: ["PUSH_HTTP", "PULL_HTTP", "STREAMING_KAFKA"]
 
   - name: "Deregister data producer"
     uri: "{apiRoot}/data-producer/v1/registrations/{producerRegistrationId}"
@@ -201,7 +201,7 @@ data_producer_registration:
 
 # --- DME Type Discovery ---
 # Reference: O-RAN.WG2.R1AP-v06.00 Section on Data Discovery
-# Response type: array(DmeTypeRelatedCapabilities)
+# Response type: array(DmeTypeRelatedCapabilities) - defined in R1AP OpenAPI
 #
 # dmeTypeId format: String in form "<namespace>:<name>:<version>"
 #   Example: "oran:coverage-kpis:1.0.0"
@@ -213,7 +213,7 @@ data_producer_registration:
 #   - Safest approach: query without filter first, then use returned values
 #
 # IMPORTANT: Response field names below are ILLUSTRATIVE.
-# Actual field names must match DmeTypeRelatedCapabilities spec definition.
+# Actual field names must match DmeTypeRelatedCapabilities as defined in R1AP OpenAPI.
 # Consult your R1AP version for exact wire-format field names.
 data_discovery:
   - name: "Discover all DME types"
@@ -229,7 +229,7 @@ data_discovery:
         description: "Filter by data category (IMPLEMENTATION-DEPENDENT - use values from your SMO)"
     example_payload: null
     example_response:
-      # Response is array(DmeTypeRelatedCapabilities)
+      # Response is array(DmeTypeRelatedCapabilities) per R1AP OpenAPI
       # dmeTypeId is a STRING: "<namespace>:<name>:<version>"
       # NOTE: Field names below are ILLUSTRATIVE - verify against your R1AP spec
       - dmeTypeDefinition:
@@ -264,7 +264,7 @@ data_discovery:
         dataAccessEndpoint: "https://smo.operator.com/data-access/v1"
         dataDeliveryModes:
           - deliveryMode: "CONTINUOUS"
-            supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING"]
+            supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING_KAFKA"]
           - deliveryMode: "ONE_TIME"
             supportedDeliveryMethods: ["PUSH_HTTP", "PULL_HTTP"]
       - dmeTypeDefinition:
@@ -272,7 +272,7 @@ data_discovery:
         dataAccessEndpoint: "https://smo.operator.com/data-access/v1"
         dataDeliveryModes:
           - deliveryMode: "CONTINUOUS"
-            supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING"]
+            supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING_KAFKA"]
       - dmeTypeDefinition:
           dmeTypeId: "oran:cell-config:1.0.0"
         dataAccessEndpoint: "https://smo.operator.com/data-access/v1"
@@ -348,7 +348,7 @@ data_access:
       dmeTypeId: "oran:coverage-kpis:1.0.0"
       status: "RUNNING"
 
-  - name: "Create one-time data request"
+  - name: "Create one-time data request (PUSH)"
     uri: "{apiRoot}/data-access/v1/data-jobs"
     method: "POST"
     response_code: 201
@@ -363,6 +363,36 @@ data_access:
       dataDeliveryMethod: "PUSH_HTTP"
       pushDeliveryDetailsHttp:
         dataPushUri: "http://rapp.example.com/data-delivery/config"
+
+  # PULL_HTTP pattern: Consumer requests data, producer provides dataPullUri in response
+  # For PULL_HTTP: consumer provides dataAvailabilityNotificationUri for producer to notify when ready
+  # Producer provides pullDeliveryDetailsHttp.dataPullUri in response
+  - name: "Create data job with PULL delivery"
+    uri: "{apiRoot}/data-access/v1/data-jobs"
+    method: "POST"
+    response_code: 201
+    response_headers:
+      Location: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
+    example_payload:
+      dmeTypeId: "oran:pm-data:1.0.0"
+      productionJobDefinition:
+        cellIdList: ["cell_1", "cell_2"]
+        measurementTypes: ["throughput_dl_mbps", "throughput_ul_mbps"]
+        timeRange:
+          startTime: "2024-01-14T00:00:00Z"
+          endTime: "2024-01-15T00:00:00Z"
+      dataDeliveryMode: "ONE_TIME"
+      dataDeliveryMethod: "PULL_HTTP"
+      dataDeliverySchemaId: "pm-data-schema-v1"
+      # For PULL_HTTP: consumer provides notification URI for data availability
+      dataAvailabilityNotificationUri: "http://rapp.example.com/notifications/data-ready"
+    example_response:
+      dataJobId: "job-pull-001"
+      dmeTypeId: "oran:pm-data:1.0.0"
+      status: "COMPLETED"
+      # Producer provides the URI where consumer can pull data
+      pullDeliveryDetailsHttp:
+        dataPullUri: "https://data-producer.example.com/data/job-pull-001"
 
   - name: "Get data job"
     uri: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
@@ -464,29 +494,29 @@ data_offers:
 # SECTION 5.3: A1-Related Services (R1-AP v5.0 compliant)
 a1_policy_management:
   - name: "Get A1 policy types"
-    uri: "{apiRoot}/r1-a1-policy-management/v1/policytypes"
+    uri: "{apiRoot}/a1-policy-management/v1/policy-types"
     method: "GET"
     response_code: 200
     example_payload: null
 
   - name: "Get A1 policy type schema"
-    uri: "{apiRoot}/r1-a1-policy-management/v1/policytypes/{policyTypeId}"
+    uri: "{apiRoot}/a1-policy-management/v1/policy-types/{policyTypeId}"
     method: "GET"
     response_code: 200
     example_payload: null
 
   - name: "Create A1 policy"
-    uri: "{apiRoot}/r1-a1-policy-management/v1/policies"
+    uri: "{apiRoot}/a1-policy-management/v1/policies"
     method: "POST"
     response_code: 201
     response_headers:
-      Location: "{apiRoot}/r1-a1-policy-management/v1/policies/{policyId}"
+      Location: "{apiRoot}/a1-policy-management/v1/policies/{policyId}"
     example_payload:
       policyId: "policy-001"
       policyTypeId: "ORAN_QoSTarget_1.0.0"
       nearRtRicId: "ric-001"
       serviceAreaId: "sa-001"
-      policyData:
+      policyObject:
         scope:
           cellIdList: ["cell-1", "cell-2"]
           sliceId:
@@ -499,38 +529,38 @@ a1_policy_management:
       statusNotificationUri: "http://rapp.example.com/policy-status"
 
   - name: "Get A1 policy"
-    uri: "{apiRoot}/r1-a1-policy-management/v1/policies/{policyId}"
+    uri: "{apiRoot}/a1-policy-management/v1/policies/{policyId}"
     method: "GET"
     response_code: 200
     example_payload: null
 
   - name: "Update A1 policy"
-    uri: "{apiRoot}/r1-a1-policy-management/v1/policies/{policyId}"
+    uri: "{apiRoot}/a1-policy-management/v1/policies/{policyId}"
     method: "PUT"
     response_code: 200
     example_payload:
       policyId: "policy-001"
       policyTypeId: "ORAN_QoSTarget_1.0.0"
       nearRtRicId: "ric-001"
-      policyData:
+      policyObject:
         qosObjectives:
           guaranteedBitRate: 15000
           packetDelayBudget: 15
 
   - name: "Delete A1 policy"
-    uri: "{apiRoot}/r1-a1-policy-management/v1/policies/{policyId}"
+    uri: "{apiRoot}/a1-policy-management/v1/policies/{policyId}"
     method: "DELETE"
     response_code: 204
     example_payload: null
 
   - name: "Query A1 policy status"
-    uri: "{apiRoot}/r1-a1-policy-management/v1/policies/{policyId}/status"
+    uri: "{apiRoot}/a1-policy-management/v1/policies/{policyId}/status"
     method: "GET"
     response_code: 200
     example_payload: null
 
   - name: "Get Near-RT RICs"
-    uri: "{apiRoot}/r1-a1-policy-management/v1/rics"
+    uri: "{apiRoot}/a1-policy-management/v1/rics"
     method: "GET"
     response_code: 200
     query_params:

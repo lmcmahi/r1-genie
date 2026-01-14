@@ -13,7 +13,7 @@
 #   - dataJobId: Data job identifier
 #   - DataJobInfo: Schema for data job creation (no jobOwner - use authN context)
 #   - dataDeliveryMode: CONTINUOUS | ONE_TIME
-#   - dataDeliveryMethod: PUSH_HTTP | PULL_HTTP | STREAMING
+#   - dataDeliveryMethod: PUSH_HTTP | PULL_HTTP | STREAMING_KAFKA
 #
 # data-category query parameter:
 #   - Values are IMPLEMENTATION-DEPENDENT (check your SMO's supported values)
@@ -30,13 +30,13 @@
 #   - Different from actual data push
 #
 # IMPORTANT: Response field names in examples are ILLUSTRATIVE.
-# Actual field names must match DmeTypeRelatedCapabilities spec definition.
+# Actual field names must match DmeTypeRelatedCapabilities as defined in R1AP OpenAPI.
 # Consult your R1AP version for exact wire-format field names.
 #
 # R1 API Categories Included:
 #   - Data Discovery: /data-discovery/v2/dme-types
 #   - Data Access: /data-access/v1/data-jobs
-#   - A1 Policy: /r1-a1-policy-management/v1/policies
+#   - A1 Policy: /a1-policy-management/v1/policies
 #   - AI/ML: /r1-aiml/v1/mlModels
 #   - rApp Management: /r1-rapp-management/v1/rapps
 #
@@ -101,7 +101,7 @@ workflows:
         expected_outputs:
           dmeTypeId: "oran:coverage-kpis:1.0.0"
           dataDeliverySchemaId: "coverage-kpi-delivery-schema-v1"
-          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING"]
+          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING_KAFKA"]
 
       - step: 2
         api: "data_access.POST_data_jobs"
@@ -204,7 +204,7 @@ workflows:
         inputs: {}
         expected_outputs:
           dmeTypeId: "oran:capacity-kpis:1.0.0"
-          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING"]
+          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING_KAFKA"]
 
       - step: 2
         api: "data_access.POST_data_jobs"
@@ -386,7 +386,7 @@ workflows:
     steps:
       - step: 1
         api: "a1_policy_management.GET_rics"
-        uri: "/r1-a1-policy-management/v1/rics"
+        uri: "/a1-policy-management/v1/rics"
         method: "GET"
         purpose: "Get available Near-RT RICs"
         reasoning: "First, identify which Near-RT RIC will enforce the policy"
@@ -396,7 +396,7 @@ workflows:
 
       - step: 2
         api: "a1_policy_management.GET_policytypes"
-        uri: "/r1-a1-policy-management/v1/policytypes"
+        uri: "/a1-policy-management/v1/policy-types"
         method: "GET"
         purpose: "Get supported QoS policy types"
         reasoning: "Find the policy type schema that matches QoS requirements"
@@ -406,7 +406,7 @@ workflows:
 
       - step: 3
         api: "a1_policy_management.POST_policies"
-        uri: "/r1-a1-policy-management/v1/policies"
+        uri: "/a1-policy-management/v1/policies"
         method: "POST"
         purpose: "Create the QoS policy"
         reasoning: "Create the A1 policy with QoS targets for the specified slice"
@@ -422,7 +422,7 @@ workflows:
           policyTypeId: "ORAN_QoSTarget_1.0.0"
           nearRtRicId: "ric-001"
           serviceAreaId: "sa-001"
-          policyData:
+          policyObject:
             scope:
               cellIdList: ["{cellIds}"]
               sliceId: "{sliceId}"
@@ -436,7 +436,7 @@ workflows:
 
       - step: 4
         api: "a1_policy_management.GET_policy_status"
-        uri: "/r1-a1-policy-management/v1/policies/{policyId}/status"
+        uri: "/a1-policy-management/v1/policies/{policyId}/status"
         method: "GET"
         purpose: "Verify policy deployment"
         reasoning: "Check that the policy was successfully deployed to the Near-RT RIC"
@@ -448,7 +448,7 @@ workflows:
     cleanup:
       - step: 5
         api: "a1_policy_management.DELETE_policies"
-        uri: "/r1-a1-policy-management/v1/policies/{policyId}"
+        uri: "/a1-policy-management/v1/policies/{policyId}"
         method: "DELETE"
         purpose: "Remove policy when no longer needed"
         inputs:
@@ -493,7 +493,7 @@ workflows:
     steps:
       - step: 1
         api: "a1_policy_management.GET_rics"
-        uri: "/r1-a1-policy-management/v1/rics"
+        uri: "/a1-policy-management/v1/rics"
         method: "GET"
         purpose: "Get available Near-RT RICs"
         reasoning: "Identify which RIC covers the target cells"
@@ -503,7 +503,7 @@ workflows:
 
       - step: 2
         api: "a1_policy_management.GET_policytypes"
-        uri: "/r1-a1-policy-management/v1/policytypes"
+        uri: "/a1-policy-management/v1/policy-types"
         method: "GET"
         purpose: "Get load balancing policy types"
         reasoning: "Find the MLB policy type schema"
@@ -513,7 +513,7 @@ workflows:
 
       - step: 3
         api: "a1_policy_management.POST_policies"
-        uri: "/r1-a1-policy-management/v1/policies"
+        uri: "/a1-policy-management/v1/policies"
         method: "POST"
         purpose: "Create the load balancing policy"
         reasoning: "Deploy the MLB policy with target utilization thresholds"
@@ -527,7 +527,7 @@ workflows:
           policyId: "policy-mlb-001"
           policyTypeId: "ORAN_LoadBalancing_1.0.0"
           nearRtRicId: "ric-001"
-          policyData:
+          policyObject:
             scope:
               cellIdList: ["{cellIds}"]
             loadBalancingObjectives:
@@ -541,7 +541,7 @@ workflows:
 
       - step: 4
         api: "a1_policy_management.GET_policy_status"
-        uri: "/r1-a1-policy-management/v1/policies/{policyId}/status"
+        uri: "/a1-policy-management/v1/policies/{policyId}/status"
         method: "GET"
         purpose: "Verify policy deployment"
         reasoning: "Confirm the MLB policy is active"
@@ -553,7 +553,7 @@ workflows:
     cleanup:
       - step: 5
         api: "a1_policy_management.DELETE_policies"
-        uri: "/r1-a1-policy-management/v1/policies/{policyId}"
+        uri: "/a1-policy-management/v1/policies/{policyId}"
         method: "DELETE"
         purpose: "Remove policy when no longer needed"
         inputs:

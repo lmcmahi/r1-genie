@@ -49,7 +49,7 @@ comparisons:
         example:
           scenario: "Enterprise customer needs guaranteed throughput during business hours"
           solution: "Create A1 policy with QoS targets, Near-RT RIC enforces in real-time"
-          api: "POST /r1-a1-policy-management/v1/policies"
+          api: "POST /a1-policy-management/v1/policies"
 
       o1_interface:
         definition: "The O1 interface connects the SMO to O-RAN network functions for OAM operations"
@@ -173,7 +173,7 @@ comparisons:
       data_subscription:
         definition: "R1 Data Management service for real-time data streaming"
         interface: "R1-DME"
-        delivery_methods: ["PUSH", "PULL", "STREAMING"]
+        delivery_methods: ["PUSH", "PULL", "STREAMING_KAFKA"]
         flexibility: "High - custom data types, flexible schemas"
         latency: "Real-time to near-real-time"
         use_cases:
@@ -383,7 +383,7 @@ concepts:
       - "policyTypeId - identifies the policy schema"
       - "nearRtRicId - target RIC"
       - "scope - cells, slices, UEs affected"
-      - "policyData - the actual policy parameters"
+      - "policyObject - the actual policy parameters"
       - "transient - whether policy persists across restarts"
 
     related_concepts: ["near_rt_ric", "a1_interface", "policy_type"]
