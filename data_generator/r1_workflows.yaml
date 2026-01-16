@@ -1,24 +1,36 @@
 # r1_workflows.yaml
-# O-RAN R1 Multi-Step Workflow Templates (R1AP-Compliant)
+# O-RAN R1 Multi-Step Workflow Templates (R1AP v08.00 Compliant)
 # =========================================================================
 #
-# Reference: O-RAN.WG2.R1AP-v06.00, O-RAN.WG2.R1TD-v03.00, O-RAN.WG2.R1GAP-v09.00
+# Reference: O-RAN.WG2.TS.R1AP-R004-v08.00
 #
 # This file defines detailed workflow templates using R1AP-compliant
 # terminology and API paths. All workflows use ONLY R1 interface APIs.
 #
-# R1AP Key Terminology:
-#   - dmeTypeId: String format "<namespace>:<name>:<version>" (e.g., "oran:coverage-kpis:1.0.0")
-#     Note: Version commonly uses semantic versioning (e.g., "1.0.0") for interoperability
+# R1AP v08.00 Key Terminology:
+#   - dmeTypeId: String identifier for DME type
+#     Format: "namespace:name:version" (e.g., "oran:coverage-kpis:1.0.0")
+#     Note: Case-sensitive, typically lowercase namespace
 #   - dataJobId: Data job identifier
-#   - DataJobInfo: Schema for data job creation (no jobOwner - use authN context)
+#   - DataJobInfo: Schema for data job creation (Table 7.3.8.1.2-1)
 #   - dataDeliveryMode: CONTINUOUS | ONE_TIME
 #   - dataDeliveryMethod: PUSH_HTTP | PULL_HTTP | STREAMING_KAFKA
 #
-# data-category query parameter:
-#   - Values are IMPLEMENTATION-DEPENDENT (check your SMO's supported values)
-#   - R1AP defines the parameter but exact enum values vary by implementation
-#   - Safest approach: query without filter first, then use returned values
+# Bootstrap API (R1AP v08.00 Section 6.4):
+#   - Returns BootstrapInformation with apiEndpoints array
+#   - Each entry is ApiEndpointInformation with apiName, apiEndPoint, tokenEndPoint
+#
+# Data Management APIs (R1AP v08.00 Section 7):
+#   - Data Discovery: /data-discovery/v2/dme-types (v2.0.0)
+#   - Data Access: /data-access/v2/data-jobs (v2.0.0-alpha.2)
+#   - Data Registration: /data-registration/v2/production-capabilities (v2.0.0-alpha.2)
+#   - Data Offer: /data-offer/v1/offers (v1.0.0)
+#   - HTTP Push/Pull Data: /http-push-data/v1, /http-pull-data/v1 (v1.0.0)
+#
+# Service Management APIs (R1AP v08.00 Section 6.1-6.3):
+#   - Service Registration: /published-apis/v1/ (v1.2.0)
+#   - Service Discovery: /service-apis/v1/ (v1.2.0)
+#   - Service Events: /capif-events/v1/ (v1.2.0)
 #
 # PUSH_HTTP Data Delivery:
 #   - R1AP does NOT define OpenAPI for HTTP-based Push data delivery
@@ -29,26 +41,24 @@
 #   - Posted to dataAvailabilityNotificationUri with 204 No Content response
 #   - Different from actual data push
 #
-# IMPORTANT: Response field names in examples are ILLUSTRATIVE.
-# Actual field names must match DmeTypeRelatedCapabilities as defined in R1AP OpenAPI.
-# Consult your R1AP version for exact wire-format field names.
-#
 # R1 API Categories Included:
 #   - Data Discovery: /data-discovery/v2/dme-types
-#   - Data Access: /data-access/v1/data-jobs
+#   - Data Access: /data-access/v2/data-jobs
 #   - A1 Policy: /a1-policy-management/v1/policies
 #   - AI/ML: /r1-aiml/v1/mlModels
 #   - rApp Management: /r1-rapp-management/v1/rapps
+#   - Fault Management: /ProvMnS/v1/{LDN}/AlarmList
+#   - Config Schema: /ran-oam-cm-schema-info/v1/schemas
 #
 # NOT INCLUDED (separate interfaces):
-#   - O1 APIs (fault_management, configuration_management, performance_management)
+#   - O1 APIs (direct O1 FCAPS)
 #   - O2 APIs (o2_infrastructure_management, o2_deployment_management)
 # =========================================================================
 
 metadata:
-  version: "2.2.0"
-  description: "R1AP-compliant workflow templates for training dataset generation"
-  spec_reference: "O-RAN.WG2.R1AP-v06.00, O-RAN.WG2.R1TD-v03.00, O-RAN.WG2.R1GAP-v09.00"
+  version: "3.0.0"
+  description: "R1AP v08.00 compliant workflow templates for training dataset generation"
+  spec_reference: "O-RAN.WG2.TS.R1AP-R004-v08.00"
   workflow_count: 10
 
 # ============================================================
@@ -64,8 +74,13 @@ workflows:
     description: "Set up real-time monitoring for cell coverage KPIs using R1 Data Management"
     category: "data_management"
     complexity: "medium"
-    step_count: 3
+    step_count: 4
     includes_cleanup: true
+
+    # IMPORTANT: Agent starts knowing ONLY:
+    #   api_root = "https://smo.example.com"
+    #   bootstrap_path = "/bootstrap/v1/bootstrap-info"
+    # Everything else must be discovered dynamically.
 
     intent_variations:
       - "Set up real-time monitoring for cell {cellId} to detect coverage degradation"
@@ -88,61 +103,126 @@ workflows:
         default: ["rsrp_dbm", "rsrq_db", "sinr_db"]
 
     steps:
+      # Step 1: Bootstrap - ALWAYS the first step (R1AP v08.00 Section 6.4)
       - step: 1
-        api: "data_discovery.GET_dme_types"
-        uri: "/data-discovery/v2/dme-types"
+        api: "bootstrap.GET_bootstrap_info"
+        uri: "${api_root}/bootstrap/v1/bootstrap-info"
         method: "GET"
-        purpose: "Discover available coverage DME types"
-        reasoning: "First, we need to discover what DME types are available in the system before creating a data job"
-        # NOTE: data-category filter is IMPLEMENTATION-DEPENDENT
-        # Safest to query without filter, then select from returned types
-        query_params: {}
-        inputs: {}
+        purpose: "Discover available R1 service endpoints"
+        reasoning: |
+          Agent only knows api_root and bootstrap path at startup. Must call bootstrap first
+          to discover all other service endpoints. R1AP v08.00 returns apiEndpoints array
+          containing ApiEndpointInformation for each available API.
+        inputs:
+          api_root: "FROM agent_config.api_root"
         expected_outputs:
-          dmeTypeId: "oran:coverage-kpis:1.0.0"
-          dataDeliverySchemaId: "coverage-kpi-delivery-schema-v1"
-          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING_KAFKA"]
+          # R1AP v08.00 returns apiEndpoints array with ApiEndpointInformation entries
+          apiEndpoints:
+            - apiName: "data-discovery"
+              apiEndPoint:
+                ipv4Addr: "smo.example.com"
+                port: 443
+              uri: "/data-discovery/v2"
+            - apiName: "data-access"
+              apiEndPoint:
+                ipv4Addr: "smo.example.com"
+                port: 443
+              uri: "/data-access/v2"
+            - apiName: "a1-policy-management"
+              apiEndPoint:
+                ipv4Addr: "smo.example.com"
+                port: 443
+              uri: "/a1-policy-management/v1"
+          # For backward compatibility, also extract simplified paths
+          serviceEndpoints:
+            dataDiscovery: "/data-discovery/v2"
+            dataAccess: "/data-access/v2"
+            a1PolicyManagement: "/a1-policy-management/v1"
 
+      # Step 2: Discover DME types
       - step: 2
+        api: "data_discovery.GET_dme_types"
+        uri: "${api_root}${step_1.serviceEndpoints.dataDiscovery}/dme-types"
+        method: "GET"
+        purpose: "Discover available DME types for coverage monitoring"
+        reasoning: |
+          Query the DME types catalog to find types that provide coverage KPIs.
+          Look for DME types containing RSRP, RSRQ, or SINR measurements.
+          The dmeTypeId format is "<namespace>:<name>:<version>" - we need to
+          parse the response and select the appropriate type based on our needs.
+        inputs:
+          dataDiscoveryEndpoint: "FROM step_1.serviceEndpoints.dataDiscovery"
+        selection_logic: |
+          From the returned array of DME types, select one where:
+          - dmeTypeDefinition.description mentions "coverage" or "RF quality"
+          - OR supportedMeasurements includes rsrp_dbm, rsrq_db, or sinr_db
+          Store the selected dmeTypeId and dataDeliverySchemaId for next step.
+        expected_outputs:
+          dmeTypeId: "DISCOVERED - e.g., oran:coverage-kpis:1.0.0"
+          dataDeliverySchemaId: "DISCOVERED - from response"
+          supportedDeliveryMethods: "DISCOVERED - e.g., [PUSH_HTTP, STREAMING_KAFKA]"
+
+      # Step 3: Create data job
+      - step: 3
         api: "data_access.POST_data_jobs"
-        uri: "/data-access/v1/data-jobs"
+        uri: "${api_root}${step_1.serviceEndpoints.dataAccess}/data-jobs"
         method: "POST"
         purpose: "Create continuous data job for coverage KPIs"
-        reasoning: "Create a data job to receive continuous coverage metrics for the specified cell"
+        reasoning: |
+          Using the discovered dmeTypeId and dataDeliverySchemaId from step 2,
+          create a data job to stream coverage metrics. Use R1TD v04.01 compliant
+          dataJobDefinition with dataSelector, targetSelector, and timing.
+          Choose PUSH_HTTP if supported, configure the callback URI.
         inputs:
-          dmeTypeId: "FROM step_1.dmeTypeId"
-          dataDeliverySchemaId: "FROM step_1.dataDeliverySchemaId"
+          dataAccessEndpoint: "FROM step_1.serviceEndpoints.dataAccess"
+          dmeTypeId: "FROM step_2.dmeTypeId"
+          dataDeliverySchemaId: "FROM step_2.dataDeliverySchemaId"
           cellId: "FROM context.cellId"
           measurementTypes: "FROM context.kpis"
           reportingPeriod: "FROM context.reportingPeriod"
+        # R1TD v04.01 compliant request body structure
         request_body:
-          # NOTE: jobOwner is NOT part of R1AP DataJobInfo - ownership via authN context
-          dmeTypeId: "oran:coverage-kpis:1.0.0"
-          productionJobDefinition:
-            cellIdList: ["{cellId}"]
-            measurementTypes: ["rsrp_dbm", "rsrq_db", "sinr_db"]
-            reportingPeriod: 60
+          # Use discovered dmeTypeId from step 2 (format: namespace:name:version)
+          dmeTypeId: "${step_2.dmeTypeId}"
+          # Data production schema per R1TD v04.01 Section 5.1.4.2
+          dataJobDefinition:
+            # DataSelector (R1TD Table 5.2.2.3.1.1-1)
+            dataSelector:
+              managementData:
+                mgtDataName: "${context.kpis}"
+            # TargetSelector (R1TD Table 5.2.2.3.1.2-1)
+            targetSelector:
+              objectInstances:
+                - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=${context.cellId}"
+            # Timing (R1TD Table 5.2.2.3.1.3-1)
+            timing:
+              collectionWindow:
+                startTime: "00:00:00"
+              granularityPeriod: 900
+              reportingPeriod: "${context.reportingPeriod}"
           dataDeliveryMode: "CONTINUOUS"
           dataDeliveryMethod: "PUSH_HTTP"
-          dataDeliverySchemaId: "coverage-kpi-delivery-schema-v1"
+          # Use discovered dataDeliverySchemaId from step 2
+          dataDeliverySchemaId: "${step_2.dataDeliverySchemaId}"
           pushDeliveryDetailsHttp:
             dataPushUri: "https://rapp.operator.com/callbacks/coverage-monitoring"
         expected_outputs:
-          dataJobId: "job-cov-001"
-          status: "RUNNING"
+          dataJobId: "RETURNED - job identifier"
+          status: "ENABLED"
 
     cleanup:
-      - step: 3
+      - step: 4
         api: "data_access.DELETE_data_jobs"
-        uri: "/data-access/v1/data-jobs/{dataJobId}"
+        uri: "${api_root}${step_1.serviceEndpoints.dataAccess}/data-jobs/${step_3.dataJobId}"
         method: "DELETE"
         purpose: "Remove data job when monitoring is complete"
         reasoning: "Clean up the data job subscription when monitoring is no longer needed"
         inputs:
-          dataJobId: "FROM step_2.dataJobId"
+          dataAccessEndpoint: "FROM step_1.serviceEndpoints.dataAccess"
+          dataJobId: "FROM step_3.dataJobId"
         trigger: "When monitoring objective achieved or cancelled"
 
-    expected_outcome: "Continuous monitoring of coverage KPIs (RSRP, RSRQ, SINR) via PUSH_HTTP."
+    expected_outcome: "Continuous monitoring of coverage KPIs (RSRP, RSRQ, SINR) via PUSH_HTTP delivery to rApp callback."
 
     # PUSH_HTTP Data Delivery:
     # - R1AP does NOT define OpenAPI for HTTP-based Push data delivery
@@ -170,8 +250,13 @@ workflows:
     description: "Set up real-time monitoring for cell capacity and load using R1 Data Management"
     category: "data_management"
     complexity: "medium"
-    step_count: 3
+    step_count: 4
     includes_cleanup: true
+
+    # IMPORTANT: Agent starts knowing ONLY:
+    #   api_root = "https://smo.example.com"
+    #   bootstrap_path = "/bootstrap/v1/bootstrap-info"
+    # Everything else must be discovered dynamically.
 
     intent_variations:
       - "Monitor PRB utilization for cell {cellId}"
@@ -193,53 +278,99 @@ workflows:
         default: 60
 
     steps:
+      # Step 1: Bootstrap - ALWAYS the first step
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        uri: "${api_root}/bootstrap/v1/bootstrap-info"
+        method: "GET"
+        purpose: "Discover available R1 service endpoints"
+        reasoning: "Agent only knows api_root and bootstrap path at startup. Must call bootstrap first to discover dataDiscovery and dataAccess endpoints."
+        inputs:
+          api_root: "FROM agent_config.api_root"
+        expected_outputs:
+          serviceEndpoints:
+            dataDiscovery: "/data-discovery/v2"
+            dataAccess: "/data-access/v2"
+
+      # Step 2: Discover DME types
+      - step: 2
         api: "data_discovery.GET_dme_types"
-        uri: "/data-discovery/v2/dme-types"
+        uri: "${api_root}${step_1.serviceEndpoints.dataDiscovery}/dme-types"
         method: "GET"
         purpose: "Discover available capacity DME types"
-        reasoning: "First, find what capacity metrics DME types are available"
-        # NOTE: data-category filter is IMPLEMENTATION-DEPENDENT
-        query_params: {}
-        inputs: {}
+        reasoning: |
+          Query the DME types catalog to find types that provide capacity KPIs.
+          Look for DME types containing PRB utilization, active UEs, or throughput measurements.
+        inputs:
+          dataDiscoveryEndpoint: "FROM step_1.serviceEndpoints.dataDiscovery"
+        selection_logic: |
+          From the returned array of DME types, select one where:
+          - dmeTypeDefinition.description mentions "capacity" or "load"
+          - OR supportedMeasurements includes prb_utilization_dl_pct, active_ues, or throughput_dl_mbps_avg
         expected_outputs:
-          dmeTypeId: "oran:capacity-kpis:1.0.0"
-          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING_KAFKA"]
+          dmeTypeId: "DISCOVERED - e.g., oran:capacity-kpis:1.0.0"
+          dataDeliverySchemaId: "DISCOVERED - from response"
+          supportedDeliveryMethods: "DISCOVERED - e.g., [PUSH_HTTP, STREAMING_KAFKA]"
 
-      - step: 2
+      # Step 3: Create data job
+      - step: 3
         api: "data_access.POST_data_jobs"
-        uri: "/data-access/v1/data-jobs"
+        uri: "${api_root}${step_1.serviceEndpoints.dataAccess}/data-jobs"
         method: "POST"
         purpose: "Create continuous data job for capacity KPIs"
-        reasoning: "Create data job for PRB utilization, active UEs, and throughput metrics"
+        reasoning: |
+          Using the discovered dmeTypeId and dataDeliverySchemaId from step 2,
+          create a data job to stream capacity metrics. Configure PUSH_HTTP delivery
+          to our callback endpoint.
         inputs:
-          dmeTypeId: "FROM step_1.dmeTypeId"
+          dataAccessEndpoint: "FROM step_1.serviceEndpoints.dataAccess"
+          dmeTypeId: "FROM step_2.dmeTypeId"
+          dataDeliverySchemaId: "FROM step_2.dataDeliverySchemaId"
           cellId: "FROM context.cellId"
           reportingPeriod: "FROM context.reportingPeriod"
+        # R1TD v04.01 compliant request body structure
         request_body:
-          # NOTE: jobOwner is NOT part of R1AP DataJobInfo - ownership via authN context
-          dmeTypeId: "oran:capacity-kpis:1.0.0"
-          productionJobDefinition:
-            cellIdList: ["{cellId}"]
-            measurementTypes: ["prb_utilization_dl_pct", "prb_utilization_ul_pct", "active_ues", "throughput_dl_mbps_avg"]
-            reportingPeriod: 60
+          # Use discovered dmeTypeId from step 2 (format: namespace:name:version)
+          dmeTypeId: "${step_2.dmeTypeId}"
+          # Data production schema per R1TD v04.01 Section 5.1.4.2
+          dataJobDefinition:
+            # DataSelector (R1TD Table 5.2.2.3.1.1-1)
+            dataSelector:
+              managementData:
+                mgtDataName:
+                  - "RRU.PrbUsedDl"
+                  - "RRU.PrbUsedUl"
+                  - "RRC.ConnEstabSucc"
+                  - "DRB.UEThpDl"
+            # TargetSelector (R1TD Table 5.2.2.3.1.2-1)
+            targetSelector:
+              objectInstances:
+                - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=${context.cellId}"
+            # Timing (R1TD Table 5.2.2.3.1.3-1)
+            timing:
+              collectionWindow:
+                startTime: "00:00:00"
+              granularityPeriod: 900
+              reportingPeriod: "${context.reportingPeriod}"
           dataDeliveryMode: "CONTINUOUS"
           dataDeliveryMethod: "PUSH_HTTP"
-          dataDeliverySchemaId: "capacity-kpi-delivery-schema-v1"
+          # Use discovered dataDeliverySchemaId from step 2
+          dataDeliverySchemaId: "${step_2.dataDeliverySchemaId}"
           pushDeliveryDetailsHttp:
             dataPushUri: "https://rapp.operator.com/callbacks/capacity-monitoring"
         expected_outputs:
-          dataJobId: "job-cap-001"
-          status: "RUNNING"
+          dataJobId: "RETURNED - job identifier"
+          status: "ENABLED"
 
     cleanup:
-      - step: 3
+      - step: 4
         api: "data_access.DELETE_data_jobs"
-        uri: "/data-access/v1/data-jobs/{dataJobId}"
+        uri: "${api_root}${step_1.serviceEndpoints.dataAccess}/data-jobs/${step_3.dataJobId}"
         method: "DELETE"
         purpose: "Remove data job when monitoring is complete"
         inputs:
-          dataJobId: "FROM step_2.dataJobId"
+          dataAccessEndpoint: "FROM step_1.serviceEndpoints.dataAccess"
+          dataJobId: "FROM step_3.dataJobId"
         trigger: "When monitoring objective achieved or cancelled"
 
     expected_outcome: "Real-time visibility into cell capacity via PUSH_HTTP."
@@ -254,9 +385,13 @@ workflows:
     name: "Historical Data Request"
     description: "Request historical KPI data for analysis using R1 Data Management"
     category: "data_management"
-    complexity: "easy"
-    step_count: 3
+    complexity: "medium"
+    step_count: 5
     includes_cleanup: true
+
+    # IMPORTANT: Agent starts knowing ONLY:
+    #   api_root = "https://smo.example.com"
+    #   bootstrap_path = "/bootstrap/v1/bootstrap-info"
 
     intent_variations:
       - "Get historical RSRP data for cell {cellId} from {startDate} to {endDate}"
@@ -280,66 +415,117 @@ workflows:
         examples: [["rsrp_dbm", "sinr_db"], ["prb_utilization_dl_pct", "throughput_dl_mbps_avg"]]
 
     steps:
+      # Step 1: Bootstrap - discover endpoints
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        uri: "${api_root}/bootstrap/v1/bootstrap-info"
+        method: "GET"
+        purpose: "Discover available R1 service endpoints"
+        reasoning: "Agent only knows api_root and bootstrap path. Must discover dataDiscovery and dataAccess endpoints first."
+        inputs:
+          api_root: "FROM agent_config.api_root"
+        expected_outputs:
+          serviceEndpoints:
+            dataDiscovery: "/data-discovery/v2"
+            dataAccess: "/data-access/v2"
+
+      # Step 2: Discover DME types
+      - step: 2
         api: "data_discovery.GET_dme_types"
-        uri: "/data-discovery/v2/dme-types"
+        uri: "${api_root}${step_1.serviceEndpoints.dataDiscovery}/dme-types"
         method: "GET"
         purpose: "Find available DME types for historical data"
-        reasoning: "Identify what historical data DME types are available"
-        # NOTE: data-category filter is IMPLEMENTATION-DEPENDENT
-        query_params: {}
-        expected_outputs:
-          dmeTypeId: "oran:historical-kpis:1.0.0"
-
-      - step: 2
-        api: "data_access.POST_data_jobs"
-        uri: "/data-access/v1/data-jobs"
-        method: "POST"
-        purpose: "Request historical data (one-time)"
-        reasoning: "Create a one-time data job for the specified time range"
+        reasoning: |
+          Search for DME types that support ONE_TIME delivery mode and provide
+          historical KPI data. Look for types matching the required measurements.
         inputs:
-          dmeTypeId: "FROM step_1.dmeTypeId"
+          dataDiscoveryEndpoint: "FROM step_1.serviceEndpoints.dataDiscovery"
+        selection_logic: |
+          From returned DME types, select one where:
+          - dataDeliveryModes includes deliveryMode: ONE_TIME
+          - supportedMeasurements matches requested KPIs
+        expected_outputs:
+          dmeTypeId: "DISCOVERED - e.g., oran:pm-data:1.0.0"
+          dataDeliverySchemaId: "DISCOVERED - from response"
+
+      # Step 3: Create one-time data job
+      - step: 3
+        api: "data_access.POST_data_jobs"
+        uri: "${api_root}${step_1.serviceEndpoints.dataAccess}/data-jobs"
+        method: "POST"
+        purpose: "Request historical data (one-time delivery)"
+        reasoning: |
+          Create a ONE_TIME data job for the specified time range.
+          Use PUSH_HTTP for delivery - data will be pushed to our callback
+          when ready. Include dataAvailabilityNotificationUri if using PULL_HTTP.
+        inputs:
+          dataAccessEndpoint: "FROM step_1.serviceEndpoints.dataAccess"
+          dmeTypeId: "FROM step_2.dmeTypeId"
+          dataDeliverySchemaId: "FROM step_2.dataDeliverySchemaId"
           startTime: "FROM context.startDate"
           endTime: "FROM context.endDate"
           cellId: "FROM context.cellId"
           measurementTypes: "FROM context.kpis"
+        # R1TD v04.01 compliant request body structure
+        # NOTE: R1AP ONE_TIME jobs deliver data via push/pull mechanism,
+        # not inline in the create response. Historical date range handling
+        # is typically implementation-specific or via job parameters.
         request_body:
-          # NOTE: jobOwner is NOT part of R1AP DataJobInfo - ownership via authN context
-          dmeTypeId: "oran:historical-kpis:1.0.0"
-          productionJobDefinition:
-            cellIdList: ["{cellId}"]
-            measurementTypes: ["rsrp_dbm", "sinr_db"]
-            timeRange:
-              startTime: "{startDate}"
-              endTime: "{endDate}"
+          # Use discovered dmeTypeId from step 2 (format: namespace:name:version)
+          dmeTypeId: "${step_2.dmeTypeId}"
+          # Data production schema per R1TD v04.01 Section 5.1.4.2
+          dataJobDefinition:
+            # DataSelector (R1TD Table 5.2.2.3.1.1-1)
+            dataSelector:
+              managementData:
+                mgtDataName: "${context.kpis}"
+            # TargetSelector (R1TD Table 5.2.2.3.1.2-1)
+            targetSelector:
+              objectInstances:
+                - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=${context.cellId}"
+            # Timing (R1TD Table 5.2.2.3.1.3-1)
+            timing:
+              collectionWindow:
+                startTime: "00:00:00"
+                stopTime: "23:59:59"
+              granularityPeriod: 900
           dataDeliveryMode: "ONE_TIME"
           dataDeliveryMethod: "PUSH_HTTP"
-          dataDeliverySchemaId: "historical-kpi-delivery-schema-v1"
+          # Use discovered dataDeliverySchemaId from step 2
+          dataDeliverySchemaId: "${step_2.dataDeliverySchemaId}"
           pushDeliveryDetailsHttp:
             dataPushUri: "https://rapp.operator.com/callbacks/historical-data"
+          # Implementation-specific: Historical date range may be passed via
+          # job parameters or query params - not standardized in R1AP
+          jobParameters:
+            historicalStartTime: "${context.startDate}"
+            historicalEndTime: "${context.endDate}"
         expected_outputs:
-          dataJobId: "job-hist-001"
-          status: "RUNNING"
+          dataJobId: "RETURNED - job identifier"
+          status: "ENABLED"
 
-      - step: 3
+      # Step 4: Monitor job status
+      - step: 4
         api: "data_access.GET_data_job_status"
-        uri: "/data-access/v1/data-jobs/{dataJobId}/status"
+        uri: "${api_root}${step_1.serviceEndpoints.dataAccess}/data-jobs/${step_3.dataJobId}/status"
         method: "GET"
         purpose: "Check request status"
-        reasoning: "Monitor the status of the data request until completion"
+        reasoning: "Poll the data job status until completion. Data will be delivered to callback URI when ready."
         inputs:
-          dataJobId: "FROM step_2.dataJobId"
+          dataAccessEndpoint: "FROM step_1.serviceEndpoints.dataAccess"
+          dataJobId: "FROM step_3.dataJobId"
         expected_outputs:
           status: "COMPLETED"
 
     cleanup:
-      - step: 4
+      - step: 5
         api: "data_access.DELETE_data_jobs"
-        uri: "/data-access/v1/data-jobs/{dataJobId}"
+        uri: "${api_root}${step_1.serviceEndpoints.dataAccess}/data-jobs/${step_3.dataJobId}"
         method: "DELETE"
         purpose: "Clean up completed data job"
         inputs:
-          dataJobId: "FROM step_2.dataJobId"
+          dataAccessEndpoint: "FROM step_1.serviceEndpoints.dataAccess"
+          dataJobId: "FROM step_3.dataJobId"
         trigger: "After data is received and processed"
 
     expected_outcome: "Historical KPI data delivered via PUSH_HTTP for offline analysis and trending"
@@ -354,8 +540,13 @@ workflows:
     description: "Create A1 policy for QoS targets using R1 A1 Policy Management"
     category: "a1_policy"
     complexity: "high"
-    step_count: 4
+    step_count: 6
     includes_cleanup: true
+
+    # IMPORTANT: Agent starts knowing ONLY:
+    #   api_root = "https://smo.example.com"
+    #   bootstrap_path = "/bootstrap/v1/bootstrap-info"
+    # Everything else must be discovered dynamically.
 
     intent_variations:
       - "Create QoS policy for enterprise slice with {guaranteedBitRate} Mbps minimum"
@@ -384,75 +575,112 @@ workflows:
         examples: [["NRCell-100", "NRCell-101"], ["cell-001"]]
 
     steps:
+      # Step 1: Bootstrap - ALWAYS the first step
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        uri: "${api_root}/bootstrap/v1/bootstrap-info"
+        method: "GET"
+        purpose: "Discover available R1 service endpoints"
+        reasoning: "Agent only knows api_root and bootstrap path at startup. Must call bootstrap first to discover a1PolicyManagement endpoint."
+        inputs:
+          api_root: "FROM agent_config.api_root"
+        expected_outputs:
+          serviceEndpoints:
+            a1PolicyManagement: "/a1-policy-management/v1"
+
+      # Step 2: Discover available RICs
+      - step: 2
         api: "a1_policy_management.GET_rics"
-        uri: "/a1-policy-management/v1/rics"
+        uri: "${api_root}${step_1.serviceEndpoints.a1PolicyManagement}/rics"
         method: "GET"
         purpose: "Get available Near-RT RICs"
-        reasoning: "First, identify which Near-RT RIC will enforce the policy"
+        reasoning: |
+          Query available RICs to find one that:
+          - Covers the target cells (check managedCells)
+          - Supports QoS management capability (check ricCapabilities)
+        inputs:
+          a1PolicyEndpoint: "FROM step_1.serviceEndpoints.a1PolicyManagement"
+        selection_logic: |
+          From returned RICs, select one where:
+          - managedCells includes all cells from context.cellIds
+          - ricCapabilities includes "QOS_MANAGEMENT" or "QOS"
         expected_outputs:
-          nearRtRicId: "ric-001"
-          ricCapabilities: ["QOS_MANAGEMENT", "TRAFFIC_STEERING"]
+          nearRtRicId: "DISCOVERED - selected RIC ID"
+          ricCapabilities: "DISCOVERED - e.g., [QOS_MANAGEMENT, TRAFFIC_STEERING]"
 
-      - step: 2
+      # Step 3: Discover policy types
+      - step: 3
         api: "a1_policy_management.GET_policytypes"
-        uri: "/a1-policy-management/v1/policy-types"
+        uri: "${api_root}${step_1.serviceEndpoints.a1PolicyManagement}/policy-types"
         method: "GET"
         purpose: "Get supported QoS policy types"
-        reasoning: "Find the policy type schema that matches QoS requirements"
+        reasoning: |
+          Query policy types to find QoS policy schema.
+          Look for policyTypeId containing "QoS" or "QosTarget".
+        inputs:
+          a1PolicyEndpoint: "FROM step_1.serviceEndpoints.a1PolicyManagement"
+        selection_logic: |
+          From returned policy types, select one where:
+          - policyTypeId contains "QoS" or "QosTarget"
+          - policySchema supports guaranteedBitRate and packetDelayBudget
         expected_outputs:
-          policyTypeId: "ORAN_QoSTarget_1.0.0"
-          policySchema: "JSON schema for QoS policy"
+          policyTypeId: "DISCOVERED - e.g., ORAN_QoSTarget_1.0.0"
+          policySchema: "DISCOVERED - JSON schema for policy body"
 
-      - step: 3
+      # Step 4: Create the QoS policy
+      - step: 4
         api: "a1_policy_management.POST_policies"
-        uri: "/a1-policy-management/v1/policies"
+        uri: "${api_root}${step_1.serviceEndpoints.a1PolicyManagement}/policies"
         method: "POST"
         purpose: "Create the QoS policy"
-        reasoning: "Create the A1 policy with QoS targets for the specified slice"
+        reasoning: |
+          Using discovered nearRtRicId and policyTypeId, create the policy.
+          The policyObject must conform to the discovered policySchema.
         inputs:
-          nearRtRicId: "FROM step_1.nearRtRicId"
-          policyTypeId: "FROM step_2.policyTypeId"
+          a1PolicyEndpoint: "FROM step_1.serviceEndpoints.a1PolicyManagement"
+          nearRtRicId: "FROM step_2.nearRtRicId"
+          policyTypeId: "FROM step_3.policyTypeId"
           cellIds: "FROM context.cellIds"
           sliceId: "FROM context.sliceId"
           guaranteedBitRate: "FROM context.guaranteedBitRate"
           packetDelayBudget: "FROM context.packetDelayBudget"
         request_body:
-          policyId: "policy-qos-001"
-          policyTypeId: "ORAN_QoSTarget_1.0.0"
-          nearRtRicId: "ric-001"
-          serviceAreaId: "sa-001"
+          nearRtRicId: "${step_2.nearRtRicId}"
+          policyTypeId: "${step_3.policyTypeId}"
           policyObject:
             scope:
-              cellIdList: ["{cellIds}"]
-              sliceId: "{sliceId}"
+              cellIdList: "${context.cellIds}"
+              sliceId: "${context.sliceId}"
             qosObjectives:
-              guaranteedBitRate: "{guaranteedBitRate}"
-              packetDelayBudget: "{packetDelayBudget}"
+              guaranteedBitRate: "${context.guaranteedBitRate}"
+              packetDelayBudget: "${context.packetDelayBudget}"
           transient: false
           statusNotificationUri: "https://rapp.operator.com/callbacks/policy-status"
         expected_outputs:
-          policyId: "policy-qos-001"
+          policyId: "RETURNED - policy identifier"
 
-      - step: 4
+      # Step 5: Verify policy deployment
+      - step: 5
         api: "a1_policy_management.GET_policy_status"
-        uri: "/a1-policy-management/v1/policies/{policyId}/status"
+        uri: "${api_root}${step_1.serviceEndpoints.a1PolicyManagement}/policies/${step_4.policyId}/status"
         method: "GET"
         purpose: "Verify policy deployment"
-        reasoning: "Check that the policy was successfully deployed to the Near-RT RIC"
+        reasoning: "Confirm the policy was accepted by the Near-RT RIC and is ENFORCED."
         inputs:
-          policyId: "FROM step_3.policyId"
+          a1PolicyEndpoint: "FROM step_1.serviceEndpoints.a1PolicyManagement"
+          policyId: "FROM step_4.policyId"
         expected_outputs:
           policyStatus: "ENFORCED"
 
     cleanup:
-      - step: 5
+      - step: 6
         api: "a1_policy_management.DELETE_policies"
-        uri: "/a1-policy-management/v1/policies/{policyId}"
+        uri: "${api_root}${step_1.serviceEndpoints.a1PolicyManagement}/policies/${step_4.policyId}"
         method: "DELETE"
         purpose: "Remove policy when no longer needed"
         inputs:
-          policyId: "FROM step_3.policyId"
+          a1PolicyEndpoint: "FROM step_1.serviceEndpoints.a1PolicyManagement"
+          policyId: "FROM step_4.policyId"
         trigger: "When policy objective achieved or requirements change"
 
     expected_outcome: "A1 QoS policy active and enforced by Near-RT RIC, guaranteeing minimum throughput for the slice"
@@ -467,8 +695,12 @@ workflows:
     description: "Create A1 policy for load balancing across cells using R1 A1 Policy Management"
     category: "a1_policy"
     complexity: "high"
-    step_count: 4
+    step_count: 6
     includes_cleanup: true
+
+    # IMPORTANT: Agent starts knowing ONLY:
+    #   api_root = "https://smo.example.com"
+    #   bootstrap_path = "/bootstrap/v1/bootstrap-info"
 
     intent_variations:
       - "Create load balancing policy for cells {cellIds}"
@@ -491,76 +723,114 @@ workflows:
         examples: [5, 10, 15]
 
     steps:
+      # Step 1: Bootstrap - discover endpoints
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        uri: "${api_root}/bootstrap/v1/bootstrap-info"
+        method: "GET"
+        purpose: "Discover available R1 service endpoints"
+        reasoning: "Agent only knows api_root and bootstrap path. Must discover a1PolicyManagement endpoint first."
+        inputs:
+          api_root: "FROM agent_config.api_root"
+        expected_outputs:
+          serviceEndpoints:
+            a1PolicyManagement: "/a1-policy-management/v1"
+
+      # Step 2: Discover available RICs
+      - step: 2
         api: "a1_policy_management.GET_rics"
-        uri: "/a1-policy-management/v1/rics"
+        uri: "${api_root}${step_1.serviceEndpoints.a1PolicyManagement}/rics"
         method: "GET"
         purpose: "Get available Near-RT RICs"
-        reasoning: "Identify which RIC covers the target cells"
+        reasoning: |
+          Query available RICs to find one that:
+          - Covers the target cells (check managedCells or coverage area)
+          - Supports load balancing capability (check ricCapabilities)
+        inputs:
+          a1PolicyEndpoint: "FROM step_1.serviceEndpoints.a1PolicyManagement"
+        selection_logic: |
+          From returned RICs, select one where:
+          - managedCells includes all cells from context.cellIds
+          - ricCapabilities includes "LOAD_BALANCING" or "MLB"
         expected_outputs:
-          nearRtRicId: "ric-001"
-          ricCapabilities: ["LOAD_BALANCING", "TRAFFIC_STEERING"]
+          nearRtRicId: "DISCOVERED - selected RIC ID"
+          ricCapabilities: "DISCOVERED - e.g., [LOAD_BALANCING, TRAFFIC_STEERING]"
 
-      - step: 2
-        api: "a1_policy_management.GET_policytypes"
-        uri: "/a1-policy-management/v1/policy-types"
-        method: "GET"
-        purpose: "Get load balancing policy types"
-        reasoning: "Find the MLB policy type schema"
-        expected_outputs:
-          policyTypeId: "ORAN_LoadBalancing_1.0.0"
-          policySchema: "JSON schema for load balancing policy"
-
+      # Step 3: Discover policy types
       - step: 3
+        api: "a1_policy_management.GET_policytypes"
+        uri: "${api_root}${step_1.serviceEndpoints.a1PolicyManagement}/policy-types"
+        method: "GET"
+        purpose: "Get available policy types for load balancing"
+        reasoning: |
+          Query policy types to find load balancing policy schema.
+          Look for policyTypeId containing "LoadBalancing" or "MLB".
+        inputs:
+          a1PolicyEndpoint: "FROM step_1.serviceEndpoints.a1PolicyManagement"
+        selection_logic: |
+          From returned policy types, select one where:
+          - policyTypeId contains "LoadBalancing" or "MLB"
+          - description mentions load balancing or traffic distribution
+        expected_outputs:
+          policyTypeId: "DISCOVERED - e.g., ORAN_LoadBalancing_1.0.0"
+          policySchema: "DISCOVERED - JSON schema for policy body"
+
+      # Step 4: Create policy
+      - step: 4
         api: "a1_policy_management.POST_policies"
-        uri: "/a1-policy-management/v1/policies"
+        uri: "${api_root}${step_1.serviceEndpoints.a1PolicyManagement}/policies"
         method: "POST"
         purpose: "Create the load balancing policy"
-        reasoning: "Deploy the MLB policy with target utilization thresholds"
+        reasoning: |
+          Using discovered nearRtRicId and policyTypeId, create the policy.
+          The policyObject must conform to the discovered policySchema.
         inputs:
-          nearRtRicId: "FROM step_1.nearRtRicId"
-          policyTypeId: "FROM step_2.policyTypeId"
+          a1PolicyEndpoint: "FROM step_1.serviceEndpoints.a1PolicyManagement"
+          nearRtRicId: "FROM step_2.nearRtRicId"
+          policyTypeId: "FROM step_3.policyTypeId"
           cellIds: "FROM context.cellIds"
           targetUtilization: "FROM context.targetUtilization"
           hysteresis: "FROM context.hysteresis"
         request_body:
-          policyId: "policy-mlb-001"
-          policyTypeId: "ORAN_LoadBalancing_1.0.0"
-          nearRtRicId: "ric-001"
+          nearRtRicId: "${step_2.nearRtRicId}"
+          policyTypeId: "${step_3.policyTypeId}"
           policyObject:
             scope:
-              cellIdList: ["{cellIds}"]
+              cellIdList: "${context.cellIds}"
             loadBalancingObjectives:
-              targetUtilization: "{targetUtilization}"
-              hysteresis: "{hysteresis}"
+              targetUtilization: "${context.targetUtilization}"
+              hysteresis: "${context.hysteresis}"
               balancingAlgorithm: "PROPORTIONAL"
           transient: false
           statusNotificationUri: "https://rapp.operator.com/callbacks/policy-status"
         expected_outputs:
-          policyId: "policy-mlb-001"
+          policyId: "RETURNED - policy identifier"
 
-      - step: 4
+      # Step 5: Verify policy status
+      - step: 5
         api: "a1_policy_management.GET_policy_status"
-        uri: "/a1-policy-management/v1/policies/{policyId}/status"
+        uri: "${api_root}${step_1.serviceEndpoints.a1PolicyManagement}/policies/${step_4.policyId}/status"
         method: "GET"
         purpose: "Verify policy deployment"
-        reasoning: "Confirm the MLB policy is active"
+        reasoning: "Confirm the policy was accepted by the Near-RT RIC and is ENFORCED."
         inputs:
-          policyId: "FROM step_3.policyId"
+          a1PolicyEndpoint: "FROM step_1.serviceEndpoints.a1PolicyManagement"
+          policyId: "FROM step_4.policyId"
         expected_outputs:
           policyStatus: "ENFORCED"
 
     cleanup:
-      - step: 5
+      - step: 6
         api: "a1_policy_management.DELETE_policies"
-        uri: "/a1-policy-management/v1/policies/{policyId}"
+        uri: "${api_root}${step_1.serviceEndpoints.a1PolicyManagement}/policies/${step_4.policyId}"
         method: "DELETE"
         purpose: "Remove policy when no longer needed"
         inputs:
-          policyId: "FROM step_3.policyId"
+          a1PolicyEndpoint: "FROM step_1.serviceEndpoints.a1PolicyManagement"
+          policyId: "FROM step_4.policyId"
         trigger: "When load balancing objective achieved"
 
-    expected_outcome: "Load balancing policy active, distributing traffic across cells to maintain target utilization"
+    expected_outcome: "Load balancing policy active on discovered RIC, distributing traffic across cells to maintain target utilization"
     related_workflows: ["capacity_monitoring_setup", "qos_policy_creation"]
 
   # -----------------------------------------------------------
@@ -572,7 +842,12 @@ workflows:
     description: "Deploy AI/ML model for inference"
     category: "ai_ml"
     complexity: "high"
-    step_count: 4
+    step_count: 5
+
+    # IMPORTANT: Agent starts knowing ONLY:
+    #   api_root = "https://smo.example.com"
+    #   bootstrap_path = "/bootstrap/v1/bootstrap-info"
+    # Everything else must be discovered dynamically.
 
     intent_variations:
       - "Deploy my traffic prediction model to the SMO"
@@ -597,43 +872,95 @@ workflows:
         examples: ["ONNX", "SAVEDMODEL", "TORCHSCRIPT"]
 
     steps:
+      # Step 1: Bootstrap - ALWAYS the first step
       - step: 1
-        api: "aiml_model_registration.POST_mlModels"
-        purpose: "Register the model in the catalog"
-        reasoning: "First, register the model metadata including name, version, and schemas"
+        api: "bootstrap.GET_bootstrap_info"
+        uri: "${api_root}/bootstrap/v1/bootstrap-info"
+        method: "GET"
+        purpose: "Discover available R1 service endpoints"
+        reasoning: "Agent only knows api_root and bootstrap path at startup. Must call bootstrap first to discover aimlModelManagement endpoint."
         inputs:
+          api_root: "FROM agent_config.api_root"
+        expected_outputs:
+          serviceEndpoints:
+            aimlModelManagement: "/r1-aiml/v1"
+
+      # Step 2: Register model
+      - step: 2
+        api: "aiml_model_registration.POST_mlModels"
+        uri: "${api_root}${step_1.serviceEndpoints.aimlModelManagement}/mlModels"
+        method: "POST"
+        purpose: "Register the model in the catalog"
+        reasoning: "Register the model metadata including name, version, and schemas before uploading artifacts."
+        inputs:
+          aimlEndpoint: "FROM step_1.serviceEndpoints.aimlModelManagement"
           modelName: "FROM context.modelName"
           modelVersion: "FROM context.modelVersion"
           modelFramework: "FROM context.modelFramework"
           modelFormat: "FROM context.modelFormat"
+        request_body:
+          modelName: "${context.modelName}"
+          modelVersion: "${context.modelVersion}"
+          modelFramework: "${context.modelFramework}"
+          modelFormat: "${context.modelFormat}"
+          inputSchema:
+            type: "object"
+            description: "Model-specific input schema"
+          outputSchema:
+            type: "object"
+            description: "Model-specific output schema"
         expected_outputs:
-          modelId: "model-001"
+          modelId: "RETURNED - model identifier"
 
-      - step: 2
-        api: "aiml_model_storage.POST_artifacts"
-        purpose: "Upload the model artifact"
-        reasoning: "Upload the actual model binary/weights to storage"
-        inputs:
-          modelId: "FROM step_1"
-          artifactFormat: "FROM context.modelFormat"
-        expected_outputs:
-          artifactId: "artifact-001"
-
+      # Step 3: Upload model artifact
       - step: 3
-        api: "aiml_performance_monitoring.POST_subscriptions"
-        purpose: "Set up performance monitoring"
-        reasoning: "Configure monitoring to track model accuracy and latency"
+        api: "aiml_model_storage.POST_artifacts"
+        uri: "${api_root}${step_1.serviceEndpoints.aimlModelManagement}/mlModelArtifacts"
+        method: "POST"
+        purpose: "Upload the model artifact"
+        reasoning: "Upload the actual model binary/weights to storage using the modelId from registration."
         inputs:
-          modelId: "FROM step_1"
-          performanceMetrics: ["accuracy", "latency", "inferenceCount", "errorRate"]
+          aimlEndpoint: "FROM step_1.serviceEndpoints.aimlModelManagement"
+          modelId: "FROM step_2.modelId"
+          artifactFormat: "FROM context.modelFormat"
+        request_body:
+          modelId: "${step_2.modelId}"
+          artifactName: "${context.modelName}-${context.modelVersion}"
+          artifactFormat: "${context.modelFormat}"
+        expected_outputs:
+          artifactId: "RETURNED - artifact identifier"
 
+      # Step 4: Set up performance monitoring
       - step: 4
+        api: "aiml_performance_monitoring.POST_subscriptions"
+        uri: "${api_root}${step_1.serviceEndpoints.aimlModelManagement}/mlPerformanceSubscriptions"
+        method: "POST"
+        purpose: "Set up performance monitoring"
+        reasoning: "Configure monitoring to track model accuracy and latency after deployment."
+        inputs:
+          aimlEndpoint: "FROM step_1.serviceEndpoints.aimlModelManagement"
+          modelId: "FROM step_2.modelId"
+        request_body:
+          modelId: "${step_2.modelId}"
+          performanceMetrics: ["accuracy", "latency", "inferenceCount", "errorRate"]
+          notificationUri: "https://rapp.operator.com/callbacks/ml-performance"
+        expected_outputs:
+          subscriptionId: "RETURNED - subscription identifier"
+
+      # Step 5: Verify inference readiness
+      - step: 5
         api: "aiml_model_inference.GET_capabilities"
+        uri: "${api_root}${step_1.serviceEndpoints.aimlModelManagement}/mlInferenceCapabilities"
+        method: "GET"
         purpose: "Verify inference readiness"
-        reasoning: "Confirm the model is available for inference"
+        reasoning: "Confirm the model is available for inference by checking capabilities."
+        inputs:
+          aimlEndpoint: "FROM step_1.serviceEndpoints.aimlModelManagement"
+        expected_outputs:
+          inferenceCapabilities: "RETURNED - available inference modes"
 
     expected_outcome: "ML model deployed, stored, and ready for inference with performance monitoring active"
-    related_workflows: ["ml_model_training", "ml_inference"]
+    related_workflows: ["ml_model_training", "ml_inference_request"]
 
   # -----------------------------------------------------------
   # ML Model Training
@@ -644,7 +971,12 @@ workflows:
     description: "Train or retrain ML model with new data"
     category: "ai_ml"
     complexity: "high"
-    step_count: 4
+    step_count: 5
+
+    # IMPORTANT: Agent starts knowing ONLY:
+    #   api_root = "https://smo.example.com"
+    #   bootstrap_path = "/bootstrap/v1/bootstrap-info"
+    # Everything else must be discovered dynamically.
 
     intent_variations:
       - "Train my model with the new dataset"
@@ -667,38 +999,82 @@ workflows:
           - {learningRate: 0.0001, batchSize: 64, epochs: 200}
 
     steps:
+      # Step 1: Bootstrap - ALWAYS the first step
       - step: 1
-        api: "aiml_training_capability.GET_capabilities"
-        purpose: "Check available training resources"
-        reasoning: "Verify that training infrastructure is available"
-
-      - step: 2
-        api: "aiml_model_training.POST_training_jobs"
-        purpose: "Start training job"
-        reasoning: "Create and start the training job with specified hyperparameters"
+        api: "bootstrap.GET_bootstrap_info"
+        uri: "${api_root}/bootstrap/v1/bootstrap-info"
+        method: "GET"
+        purpose: "Discover available R1 service endpoints"
+        reasoning: "Agent only knows api_root and bootstrap path at startup. Must call bootstrap first to discover aimlModelManagement endpoint."
         inputs:
+          api_root: "FROM agent_config.api_root"
+        expected_outputs:
+          serviceEndpoints:
+            aimlModelManagement: "/r1-aiml/v1"
+
+      # Step 2: Check training capabilities
+      - step: 2
+        api: "aiml_training_capability.GET_capabilities"
+        uri: "${api_root}${step_1.serviceEndpoints.aimlModelManagement}/mlTrainingCapabilities"
+        method: "GET"
+        purpose: "Check available training resources"
+        reasoning: "Verify that training infrastructure is available and determine supported configurations."
+        inputs:
+          aimlEndpoint: "FROM step_1.serviceEndpoints.aimlModelManagement"
+        expected_outputs:
+          trainingCapabilities: "RETURNED - available training configurations"
+
+      # Step 3: Start training job
+      - step: 3
+        api: "aiml_model_training.POST_training_jobs"
+        uri: "${api_root}${step_1.serviceEndpoints.aimlModelManagement}/mlTrainingJobs"
+        method: "POST"
+        purpose: "Start training job"
+        reasoning: "Create and start the training job with specified hyperparameters for the existing model."
+        inputs:
+          aimlEndpoint: "FROM step_1.serviceEndpoints.aimlModelManagement"
           modelId: "FROM context.modelId"
           trainingDataUri: "FROM context.trainingDataUri"
           hyperparameters: "FROM context.hyperparameters"
+        request_body:
+          modelId: "${context.modelId}"
+          trainingDataUri: "${context.trainingDataUri}"
+          hyperparameters: "${context.hyperparameters}"
+          statusNotificationUri: "https://rapp.operator.com/callbacks/training-status"
         expected_outputs:
-          trainingJobId: "training-001"
+          trainingJobId: "RETURNED - training job identifier"
 
-      - step: 3
+      # Step 4: Monitor training progress
+      - step: 4
         api: "aiml_model_training.GET_training_jobs"
+        uri: "${api_root}${step_1.serviceEndpoints.aimlModelManagement}/mlTrainingJobs/${step_3.trainingJobId}"
+        method: "GET"
         purpose: "Monitor training progress"
-        reasoning: "Check training status until completion"
+        reasoning: "Check training status until completion. Poll periodically or wait for notification."
         inputs:
-          trainingJobId: "FROM step_2"
+          aimlEndpoint: "FROM step_1.serviceEndpoints.aimlModelManagement"
+          trainingJobId: "FROM step_3.trainingJobId"
         expected_outputs:
           status: "COMPLETED"
-          metrics: {loss: 0.05, accuracy: 0.95}
+          metrics: "RETURNED - e.g., {loss: 0.05, accuracy: 0.95}"
 
-      - step: 4
+      # Step 5: Store trained model artifact
+      - step: 5
         api: "aiml_model_storage.POST_artifacts"
+        uri: "${api_root}${step_1.serviceEndpoints.aimlModelManagement}/mlModelArtifacts"
+        method: "POST"
         purpose: "Store trained model"
-        reasoning: "Save the newly trained model artifact"
+        reasoning: "Save the newly trained model artifact for future inference."
         inputs:
+          aimlEndpoint: "FROM step_1.serviceEndpoints.aimlModelManagement"
           modelId: "FROM context.modelId"
+          trainingJobId: "FROM step_3.trainingJobId"
+        request_body:
+          modelId: "${context.modelId}"
+          artifactName: "${context.modelId}-trained"
+          sourceTrainingJobId: "${step_3.trainingJobId}"
+        expected_outputs:
+          artifactId: "RETURNED - artifact identifier"
 
     expected_outcome: "Model training completed with improved accuracy, new artifact stored"
 
@@ -712,6 +1088,11 @@ workflows:
     category: "rapp_management"
     complexity: "medium"
     step_count: 4
+
+    # IMPORTANT: Agent starts knowing ONLY:
+    #   api_root = "https://smo.example.com"
+    #   bootstrap_path = "/bootstrap/v1/bootstrap-info"
+    # Everything else must be discovered dynamically.
 
     intent_variations:
       - "Onboard my rApp to the SMO"
@@ -732,38 +1113,67 @@ workflows:
         examples: ["SERVICE_PRODUCER", "SERVICE_CONSUMER", "HYBRID"]
 
     steps:
+      # Step 1: Bootstrap - ALWAYS the first step
       - step: 1
         api: "bootstrap.GET_bootstrap_info"
-        purpose: "Get SMO bootstrap information"
-        reasoning: "Discover available service endpoints before registration"
+        uri: "${api_root}/bootstrap/v1/bootstrap-info"
+        method: "GET"
+        purpose: "Discover available R1 service endpoints"
+        reasoning: "Agent only knows api_root and bootstrap path at startup. Must call bootstrap first to discover rappManagement and capifPublish endpoints."
+        inputs:
+          api_root: "FROM agent_config.api_root"
         expected_outputs:
-          apiRoot: "https://smo.example.com"
-          serviceEndpoints: {}
+          serviceEndpoints:
+            rappManagement: "/r1-rapp-management/v1"
+            capifPublish: "/capif-publish/v1"
 
+      # Step 2: Register the rApp
       - step: 2
         api: "rapp_registration.POST_rapps"
+        uri: "${api_root}${step_1.serviceEndpoints.rappManagement}/rapps"
+        method: "POST"
         purpose: "Register the rApp"
-        reasoning: "Register rApp metadata including vendor, type, and requirements"
+        reasoning: "Register rApp metadata including vendor, type, and requirements with the SMO."
         inputs:
+          rappEndpoint: "FROM step_1.serviceEndpoints.rappManagement"
           rAppName: "FROM context.rAppName"
           vendor: "FROM context.vendor"
           rAppType: "FROM context.rAppType"
+        request_body:
+          rAppName: "${context.rAppName}"
+          vendor: "${context.vendor}"
+          rAppType: "${context.rAppType}"
+          description: "rApp for ${context.rAppName} operations"
         expected_outputs:
-          rAppId: "rapp-001"
+          rAppId: "RETURNED - rApp identifier"
 
+      # Step 3: Publish rApp service APIs
       - step: 3
         api: "service_registration.POST_service_apis"
+        uri: "${api_root}${step_1.serviceEndpoints.capifPublish}/${step_2.rAppId}/service-apis"
+        method: "POST"
         purpose: "Publish rApp service APIs"
-        reasoning: "Make rApp's APIs discoverable by other applications"
+        reasoning: "Make rApp's APIs discoverable by other applications through CAPIF."
         inputs:
-          rAppId: "FROM step_2"
+          capifEndpoint: "FROM step_1.serviceEndpoints.capifPublish"
+          rAppId: "FROM step_2.rAppId"
+        request_body:
+          apiName: "${context.rAppName}-api"
+          apiVersion: "1.0.0"
+          description: "Service APIs for ${context.rAppName}"
+        expected_outputs:
+          serviceApiId: "RETURNED - service API identifier"
 
+      # Step 4: Verify registration status
       - step: 4
         api: "rapp_registration.GET_rapp_status"
+        uri: "${api_root}${step_1.serviceEndpoints.rappManagement}/rapps/${step_2.rAppId}/status"
+        method: "GET"
         purpose: "Verify registration status"
-        reasoning: "Confirm rApp is successfully registered and operational"
+        reasoning: "Confirm rApp is successfully registered and operational."
         inputs:
-          rAppId: "FROM step_2"
+          rappEndpoint: "FROM step_1.serviceEndpoints.rappManagement"
+          rAppId: "FROM step_2.rAppId"
         expected_outputs:
           status: "ACTIVE"
 
@@ -792,8 +1202,13 @@ workflows:
     description: "Subscribe to A1 enrichment information data using R1 A1-EI APIs"
     category: "a1_services"
     complexity: "medium"
-    step_count: 3
+    step_count: 4
     includes_cleanup: true
+
+    # IMPORTANT: Agent starts knowing ONLY:
+    #   api_root = "https://smo.example.com"
+    #   bootstrap_path = "/bootstrap/v1/bootstrap-info"
+    # Everything else must be discovered dynamically.
 
     intent_variations:
       - "Subscribe to UE location data"
@@ -808,42 +1223,64 @@ workflows:
         examples: ["ue-location-data", "ue-trajectory-data"]
 
     steps:
+      # Step 1: Bootstrap - ALWAYS the first step
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        uri: "${api_root}/bootstrap/v1/bootstrap-info"
+        method: "GET"
+        purpose: "Discover available R1 service endpoints"
+        reasoning: "Agent only knows api_root and bootstrap path at startup. Must call bootstrap first to discover a1EnrichmentInformation endpoint."
+        inputs:
+          api_root: "FROM agent_config.api_root"
+        expected_outputs:
+          serviceEndpoints:
+            a1EnrichmentInformation: "/r1-a1-ei/v1"
+
+      # Step 2: Discover EI types
+      - step: 2
         api: "a1_enrichment_information.GET_eitypes"
-        uri: "/r1-a1-ei/v1/eitypes"
+        uri: "${api_root}${step_1.serviceEndpoints.a1EnrichmentInformation}/eitypes"
         method: "GET"
         purpose: "Discover EI types"
-        reasoning: "Find available enrichment information types"
+        reasoning: "Find available enrichment information types to subscribe to."
+        inputs:
+          a1EiEndpoint: "FROM step_1.serviceEndpoints.a1EnrichmentInformation"
+        selection_logic: |
+          From returned EI types, select one where:
+          - eiTypeId matches requested type (e.g., ue-location-data)
+          - OR description indicates UE context/location data
         expected_outputs:
-          eiTypeId: "FROM context.eiTypeId"
-          eiJobParametersSchema: "JSON schema for EI job"
+          eiTypeId: "DISCOVERED - e.g., ue-location-data"
+          eiJobParametersSchema: "DISCOVERED - JSON schema for EI job"
 
-      - step: 2
+      # Step 3: Create EI job
+      - step: 3
         api: "a1_enrichment_information.POST_eijobs"
-        uri: "/r1-a1-ei/v1/eijobs"
+        uri: "${api_root}${step_1.serviceEndpoints.a1EnrichmentInformation}/eijobs"
         method: "POST"
         purpose: "Create EI job"
-        reasoning: "Subscribe to enrichment information stream"
+        reasoning: "Subscribe to enrichment information stream using discovered eiTypeId."
         inputs:
-          eiTypeId: "FROM step_1.eiTypeId"
+          a1EiEndpoint: "FROM step_1.serviceEndpoints.a1EnrichmentInformation"
+          eiTypeId: "FROM step_2.eiTypeId"
         request_body:
-          eiTypeId: "{eiTypeId}"
+          eiTypeId: "${step_2.eiTypeId}"
           jobDefinition:
             ueIdList: ["imsi-310150123456789"]
           targetUri: "https://rapp.operator.com/callbacks/ei-data"
-          owner: "analytics-rapp"
         expected_outputs:
-          eiJobId: "ei-job-001"
+          eiJobId: "RETURNED - EI job identifier"
           status: "RUNNING"
 
     cleanup:
-      - step: 3
+      - step: 4
         api: "a1_enrichment_information.DELETE_eijobs"
-        uri: "/r1-a1-ei/v1/eijobs/{eiJobId}"
+        uri: "${api_root}${step_1.serviceEndpoints.a1EnrichmentInformation}/eijobs/${step_3.eiJobId}"
         method: "DELETE"
         purpose: "Remove EI job when no longer needed"
         inputs:
-          eiJobId: "FROM step_2.eiJobId"
+          a1EiEndpoint: "FROM step_1.serviceEndpoints.a1EnrichmentInformation"
+          eiJobId: "FROM step_3.eiJobId"
         trigger: "When enrichment data no longer required"
 
     expected_outcome: "Enrichment information subscription active, receiving UE context data via callback"
@@ -858,7 +1295,12 @@ workflows:
     description: "Request prediction from deployed ML model using R1 AI/ML APIs"
     category: "ai_ml"
     complexity: "easy"
-    step_count: 2
+    step_count: 3
+
+    # IMPORTANT: Agent starts knowing ONLY:
+    #   api_root = "https://smo.example.com"
+    #   bootstrap_path = "/bootstrap/v1/bootstrap-info"
+    # Everything else must be discovered dynamically.
 
     intent_variations:
       - "Get prediction from {modelName}"
@@ -877,34 +1319,57 @@ workflows:
           - {ueMetrics: [1.2, 3.4, 5.6], cellMetrics: {prbUtilization: 75, activeUsers: 150}}
 
     steps:
+      # Step 1: Bootstrap - ALWAYS the first step
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        uri: "${api_root}/bootstrap/v1/bootstrap-info"
+        method: "GET"
+        purpose: "Discover available R1 service endpoints"
+        reasoning: "Agent only knows api_root and bootstrap path at startup. Must call bootstrap first to discover aimlModelManagement endpoint."
+        inputs:
+          api_root: "FROM agent_config.api_root"
+        expected_outputs:
+          serviceEndpoints:
+            aimlModelManagement: "/r1-aiml/v1"
+
+      # Step 2: Find the model
+      - step: 2
         api: "aiml_model_discovery.GET_mlModels"
-        uri: "/r1-aiml/v1/mlModels"
+        uri: "${api_root}${step_1.serviceEndpoints.aimlModelManagement}/mlModels"
         method: "GET"
         purpose: "Find the model"
-        reasoning: "Locate the model by name"
+        reasoning: "Search for the model by name to get its modelId."
+        inputs:
+          aimlEndpoint: "FROM step_1.serviceEndpoints.aimlModelManagement"
+          modelName: "FROM context.modelName"
         query_params:
-          modelName: "{modelName}"
+          modelName: "${context.modelName}"
+        selection_logic: |
+          From returned models, select one where:
+          - modelName matches context.modelName
+          - status is READY or DEPLOYED
         expected_outputs:
-          modelId: "model-001"
+          modelId: "DISCOVERED - model identifier"
 
-      - step: 2
+      # Step 3: Request inference
+      - step: 3
         api: "aiml_model_inference.POST_inference_jobs"
-        uri: "/r1-aiml/v1/mlInferenceJobs"
+        uri: "${api_root}${step_1.serviceEndpoints.aimlModelManagement}/mlInferenceJobs"
         method: "POST"
         purpose: "Request inference"
-        reasoning: "Submit input data for prediction"
+        reasoning: "Submit input data for prediction using the discovered modelId."
         inputs:
-          modelId: "FROM step_1.modelId"
+          aimlEndpoint: "FROM step_1.serviceEndpoints.aimlModelManagement"
+          modelId: "FROM step_2.modelId"
           inputData: "FROM context.inputData"
         request_body:
-          modelId: "{modelId}"
-          inputData: "{inputData}"
+          modelId: "${step_2.modelId}"
+          inputData: "${context.inputData}"
           inferenceMode: "SYNC"
           timeout: 5000
         expected_outputs:
-          inferenceJobId: "inference-001"
-          prediction: {predictedLoad: 85.5}
+          inferenceJobId: "RETURNED - inference job identifier"
+          prediction: "RETURNED - e.g., {predictedLoad: 85.5}"
 
     expected_outcome: "Prediction returned from ML model"
     related_workflows: ["ml_model_deployment", "capacity_monitoring_setup"]

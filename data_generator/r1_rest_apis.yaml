@@ -1,56 +1,168 @@
 # r1_rest_apis.yaml
 # O-RAN R1 REST API definitions - PURE R1 INTERFACE ONLY
-# Aligned with O-RAN.WG2.R1AP-v06.00, O-RAN.WG2.R1GAP-v09.00, O-RAN.WG2.R1TD-v03.00
-# and 3GPP CAPIF (TS 29.222)
+# Aligned with O-RAN.WG2.TS.R1AP-R004-v08.00 and 3GPP CAPIF (TS 29.222)
 # =========================================================================
 #
 # IMPORTANT: This file contains ONLY R1 interface APIs (rApp ↔ SMO).
 # O1 (OAM) and O2 (Infrastructure) APIs are NOT included.
 #
-# R1 Interface Sections:
-#   - 5.1 Service Management (CAPIF-aligned)
-#   - 5.2 Data Management (R1-DME)
-#   - 5.3 A1 Policy Services (R1-AP)
-#   - 5.6 AI/ML Workflow Services (R1-AIML)
-#   - 5.7 rApp Management Services
+# R1AP v08.00 API Versions (Table 5.1-1):
+#   - Bootstrap:                1.0.0
+#   - Service Registration:     1.2.0
+#   - Service Discovery:        1.2.0
+#   - Service Events:           1.2.0
+#   - Data Registration:        2.0.0-alpha.2
+#   - Data Discovery:           2.0.0
+#   - Data Access:              2.0.0-alpha.2
+#   - HTTP Push/Pull Data:      1.0.0
+#   - Data Offer:               1.0.0
+#   - Configuration Management: 1.0.0-alpha.1
+#   - Fault Management:         1.0.0
+#   - Config Schema Info:       1.0.0-alpha.1
+#   - A1 Policy Management:     1.0.0
+#   - AI/ML Model Registration: 1.0.0
+#   - AI/ML Model Discovery:    1.0.0
+#   - AI/ML Model Training:     1.0.0-alpha.1
+#   - AI/ML Model Deployment:   1.0.0-alpha.1
+#   - AI/ML Model Retrieve:     1.0.0-alpha.1
 #
-# NOT INCLUDED (separate interfaces):
-#   - O1 Interface: SMO ↔ O-RAN NFs (OAM, Config, FM, PM)
-#   - O2 Interface: SMO ↔ O-Cloud (Infrastructure)
-#
-# URI Pattern Reference (R1AP-compliant):
-#   - Service Publishing:    /capif-publish/v1/{apfId}/service-apis
-#   - Service Discovery:     /capif-discover/v1/allServiceAPIs
-#   - DME Type Discovery:    /data-discovery/v2/dme-types
-#   - Data Access (Jobs):    /data-access/v1/data-jobs
-#   - Data Producer:         /data-producer/v1/registrations
-#   - A1 Policy:             /a1-policy-management/v1/policies
-#   - AI/ML:                 /r1-aiml/v1/mlModels
-#   - rApp Management:       /r1-rapp-management/v1/rapps
+# URI Pattern Reference (R1AP v08.00 compliant):
+#   - Bootstrap:              /bootstrap/v1/bootstrap-info
+#   - Service Publishing:     /published-apis/v1/{apfId}/service-apis
+#   - Service Discovery:      /service-apis/v1/allServiceAPIs
+#   - Service Events:         /capif-events/v1/{subscriberId}/subscriptions
+#   - Data Registration:      /data-registration/v2/production-capabilities
+#   - DME Type Discovery:     /data-discovery/v2/dme-types
+#   - Data Access (Jobs):     /data-access/v2/data-jobs
+#   - Data Offer:             /data-offer/v1/offers
+#   - A1 Policy:              /a1-policy-management/v1/policies
+#   - AI/ML:                  /r1-aiml/v1/mlModels
+#   - Fault Management:       /ProvMnS/v1/{LDN}/AlarmList={id}
+#   - Config Schema:          /ran-oam-cm-schema-info/v1/schemas
 # =========================================================================
 
-# SECTION 5.1: Service Management and Exposure (CAPIF-aligned)
+# =========================================================================
+# SECTION 6.4: Bootstrap API (R1AP v08.00 Section 6.4)
+# =========================================================================
+# API Version: 1.0.0
+# apiName: bootstrap
+# Reference: R1AP Table 6.4.8.1.2-1, Table 6.4.8.1.3-1
 bootstrap:
   - name: "Get bootstrap information"
     uri: "{apiRoot}/bootstrap/v1/bootstrap-info"
     method: "GET"
     response_code: 200
+    api_version: "1.0.0"
+    description: |
+      Bootstrap is the FIRST call an rApp makes. It discovers all available
+      service endpoints. The agent starts knowing ONLY:
+        - api_root (e.g., "https://smo.example.com")
+        - bootstrap_path ("/bootstrap/v1/bootstrap-info")
+      Everything else must be discovered from this response.
+
+      R1AP v08.00 Section 6.4.8.1.2 defines BootstrapInformation structure.
     example_payload: null
     example_response:
-      apiRoot: "https://smo.example.com"
-      serviceEndpoints:
-        capifPublish: "/capif-publish/v1"
-        capifDiscover: "/capif-discover/v1"
-        a1PolicyManagement: "/a1-policy-management/v1"
-        dataManagement: "/r1-data-management/v1"
+      # R1AP v08.00 BootstrapInformation structure (Table 6.4.8.1.2-1)
+      # Contains array of ApiEndpointInformation (Table 6.4.8.1.3-1)
+      apiEndpoints:
+        # Service Registration (published-apis)
+        - apiName: "published-apis"
+          apiEndPoint:
+            ipv4Addr: "smo.example.com"
+            port: 443
+            securityMethods: ["OAUTH"]
+          tokenEndPoint:
+            ipv4Addr: "smo.example.com"
+            port: 443
+            uri: "/oauth2/token"
+        # Service Discovery (service-apis)
+        - apiName: "service-apis"
+          apiEndPoint:
+            ipv4Addr: "smo.example.com"
+            port: 443
+            securityMethods: ["OAUTH"]
+        # Data Registration
+        - apiName: "data-registration"
+          apiEndPoint:
+            ipv4Addr: "smo.example.com"
+            port: 443
+            securityMethods: ["OAUTH"]
+        # Data Discovery
+        - apiName: "data-discovery"
+          apiEndPoint:
+            ipv4Addr: "smo.example.com"
+            port: 443
+            securityMethods: ["OAUTH"]
+        # Data Access
+        - apiName: "data-access"
+          apiEndPoint:
+            ipv4Addr: "smo.example.com"
+            port: 443
+            securityMethods: ["OAUTH"]
+        # Data Offer
+        - apiName: "data-offer"
+          apiEndPoint:
+            ipv4Addr: "smo.example.com"
+            port: 443
+            securityMethods: ["OAUTH"]
+        # A1 Policy Management
+        - apiName: "a1-policy-management"
+          apiEndPoint:
+            ipv4Addr: "smo.example.com"
+            port: 443
+            securityMethods: ["OAUTH"]
+        # AI/ML Services
+        - apiName: "r1-aiml"
+          apiEndPoint:
+            ipv4Addr: "smo.example.com"
+            port: 443
+            securityMethods: ["OAUTH"]
+        # Fault Management (ProvMnS)
+        - apiName: "ProvMnS"
+          apiEndPoint:
+            ipv4Addr: "smo.example.com"
+            port: 443
+            securityMethods: ["OAUTH"]
+        # Config Schema Information
+        - apiName: "ran-oam-cm-schema-info"
+          apiEndPoint:
+            ipv4Addr: "smo.example.com"
+            port: 443
+            securityMethods: ["OAUTH"]
+    # Simplified endpoint map for workflow builder compatibility
+    # This is a convenience mapping derived from apiEndpoints
+    service_endpoints_map:
+      publishedApis: "/published-apis/v1"
+      serviceApis: "/service-apis/v1"
+      capifEvents: "/capif-events/v1"
+      dataRegistration: "/data-registration/v2"
+      dataDiscovery: "/data-discovery/v2"
+      dataAccess: "/data-access/v2"
+      dataOffer: "/data-offer/v1"
+      a1PolicyManagement: "/a1-policy-management/v1"
+      aimlModelManagement: "/r1-aiml/v1"
+      faultManagement: "/ProvMnS/v1"
+      configSchemaInfo: "/ran-oam-cm-schema-info/v1"
 
+# =========================================================================
+# SECTION 6.1: Service Registration API (R1AP v08.00 Section 6.1)
+# =========================================================================
+# API Version: 1.2.0
+# apiName: published-apis
+# Reference: 3GPP TS 29.222 clause 8.2 (CAPIF_Publish_Service_API)
+# Note: {apfId} = rAppId of the rApp performing registration
 service_registration:
   - name: "Register API service"
-    uri: "{apiRoot}/capif-publish/v1/{apfId}/service-apis"
+    uri: "{apiRoot}/published-apis/v1/{apfId}/service-apis"
     method: "POST"
     response_code: 201
+    api_version: "1.2.0"
     response_headers:
-      Location: "{apiRoot}/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+      Location: "{apiRoot}/published-apis/v1/{apfId}/service-apis/{serviceApiId}"
+    description: |
+      Register a service API with the SMO. The {apfId} is set to the rAppId.
+      R1AP v08.00 Section 6.1.4.1 - Register service API operation.
     example_payload:
       apiName: "rApp-TrafficOptimization"
       aefProfiles:
@@ -71,16 +183,20 @@ service_registration:
       description: "Traffic optimization rApp service API"
       supportedFeatures: "0"
 
-  - name: "Get API service details"
-    uri: "{apiRoot}/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+  - name: "Query registered service APIs"
+    uri: "{apiRoot}/published-apis/v1/{apfId}/service-apis"
     method: "GET"
     response_code: 200
+    api_version: "1.2.0"
+    description: "Query service APIs registered by this rApp (R1AP Section 6.1.4.5)"
     example_payload: null
 
-  - name: "Update API service"
-    uri: "{apiRoot}/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+  - name: "Update registered service API"
+    uri: "{apiRoot}/published-apis/v1/{apfId}/service-apis/{serviceApiId}"
     method: "PUT"
     response_code: 200
+    api_version: "1.2.0"
+    description: "Full update of a registered service API (R1AP Section 6.1.4.2)"
     example_payload:
       apiName: "rApp-TrafficOptimization"
       aefProfiles:
@@ -96,34 +212,66 @@ service_registration:
           dataFormat: "JSON"
           securityMethods: ["OAUTH"]
 
-  - name: "Delete API service"
-    uri: "{apiRoot}/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+  - name: "Partial update registered service API"
+    uri: "{apiRoot}/published-apis/v1/{apfId}/service-apis/{serviceApiId}"
+    method: "PATCH"
+    response_code: 200
+    api_version: "1.2.0"
+    description: "Partial update of a registered service API (R1AP Section 6.1.4.4)"
+    example_payload:
+      description: "Updated description for traffic optimization rApp"
+
+  - name: "Deregister service API"
+    uri: "{apiRoot}/published-apis/v1/{apfId}/service-apis/{serviceApiId}"
     method: "DELETE"
     response_code: 204
+    api_version: "1.2.0"
+    description: "Deregister a service API (R1AP Section 6.1.4.3)"
     example_payload: null
 
+# =========================================================================
+# SECTION 6.2: Service Discovery API (R1AP v08.00 Section 6.2)
+# =========================================================================
+# API Version: 1.2.0
+# apiName: service-apis
+# Reference: 3GPP TS 29.222 clause 8.1 (CAPIF_Discover_Service_API)
 service_discovery:
   - name: "Discover all service APIs"
-    uri: "{apiRoot}/capif-discover/v1/allServiceAPIs"
+    uri: "{apiRoot}/service-apis/v1/allServiceAPIs"
     method: "GET"
     response_code: 200
+    api_version: "1.2.0"
+    description: |
+      Discover available service APIs. R1AP v08.00 Section 6.2.4.1.
+      The api-invoker-id query param carries the rAppId.
+      api-name and api-version can filter by name/version.
     query_params:
       - name: "api-invoker-id"
         required: true
+        description: "rAppId of the rApp performing discovery"
       - name: "api-name"
         required: false
+        description: "Filter by service API name"
       - name: "api-version"
         required: false
-      - name: "aef-id"
-        required: false
+        description: "Filter by service API version"
     example_payload: null
 
-  - name: "Subscribe to service availability"
+# =========================================================================
+# SECTION 6.3: Service Events Subscription API (R1AP v08.00 Section 6.3)
+# =========================================================================
+# API Version: 1.2.0
+# apiName: capif-events
+# Reference: 3GPP TS 29.222 clause 8.3 (CAPIF_Events_API)
+service_events:
+  - name: "Subscribe to service events"
     uri: "{apiRoot}/capif-events/v1/{subscriberId}/subscriptions"
     method: "POST"
     response_code: 201
+    api_version: "1.2.0"
     response_headers:
       Location: "{apiRoot}/capif-events/v1/{subscriberId}/subscriptions/{subscriptionId}"
+    description: "Subscribe to service event notifications (R1AP Section 6.3.4.1)"
     example_payload:
       events:
         - "SERVICE_API_AVAILABLE"
@@ -133,365 +281,776 @@ service_discovery:
         - apiIds: ["api-001", "api-002"]
       supportedFeatures: "0"
 
-  - name: "Unsubscribe from service availability"
+  - name: "Update service event subscription"
+    uri: "{apiRoot}/capif-events/v1/{subscriberId}/subscriptions/{subscriptionId}"
+    method: "PUT"
+    response_code: 200
+    api_version: "1.2.0"
+    description: "Update an event subscription"
+    example_payload:
+      events:
+        - "SERVICE_API_AVAILABLE"
+        - "SERVICE_API_UNAVAILABLE"
+        - "SERVICE_API_UPDATE"
+      notificationDestination: "http://rapp.example.com/capif-notifications"
+
+  - name: "Partial update service event subscription"
+    uri: "{apiRoot}/capif-events/v1/{subscriberId}/subscriptions/{subscriptionId}"
+    method: "PATCH"
+    response_code: 200
+    api_version: "1.2.0"
+    description: "Partial update of an event subscription"
+    example_payload:
+      notificationDestination: "http://rapp.example.com/capif-notifications-v2"
+
+  - name: "Unsubscribe from service events"
     uri: "{apiRoot}/capif-events/v1/{subscriberId}/subscriptions/{subscriptionId}"
     method: "DELETE"
     response_code: 204
+    api_version: "1.2.0"
+    description: "Unsubscribe from service event notifications (R1AP Section 6.3.4.2)"
     example_payload: null
 
-# SECTION 5.2: Data Management and Exposure (R1AP-compliant / R1-DME)
-# Reference: O-RAN.WG2.R1AP-v06.00
-#
-# Key terminology:
+# =========================================================================
+# SECTION 7: Data Management and Exposure Services (R1AP v08.00)
+# =========================================================================
+# Key terminology (R1AP v08.00):
 #   - dmeTypeId: DME (Data Management & Exposure) type identifier
-#   - dataJobId: Data job identifier (replaces infoJobId)
-#   - DataJobInfo: Schema for data job creation
-#   - dataDeliveryMode: CONTINUOUS | ONE_TIME
+#   - dataJobId: Data job identifier
+#   - DataJobInfo: Schema for data job creation (Table 7.3.8.1.2-1)
+#   - DmeTypeRelatedCapabilities: DME type registration/discovery info
+#   - dataDeliveryMode: CONTINUOUS | ONE_TIME (Table 7.3.8.2.3.1-1)
 #   - dataDeliveryMethod: PUSH_HTTP | PULL_HTTP | STREAMING_KAFKA
 
-# --- Data Producer Registration ---
-data_producer_registration:
-  - name: "Register as DME data producer"
-    uri: "{apiRoot}/data-producer/v1/registrations"
+# =========================================================================
+# SECTION 7.1: Data Registration API (R1AP v08.00 Section 7.1)
+# =========================================================================
+# API Version: 2.0.0-alpha.2
+# apiName: data-registration
+# Reference: R1AP Table 7.1.3-1, Table 7.1.8.1.2-1
+data_registration:
+  - name: "Register DME type production capability"
+    uri: "{apiRoot}/data-registration/v2/production-capabilities"
     method: "POST"
     response_code: 201
+    api_version: "2.0.0-alpha.2"
     response_headers:
-      Location: "{apiRoot}/data-producer/v1/registrations/{producerRegistrationId}"
+      Location: "{apiRoot}/data-registration/v2/production-capabilities/{registrationId}"
+    description: |
+      Register DME type production capabilities. R1AP v08.00 Section 7.1.4.1.
+      Request body: DmeTypeRelatedCapabilities (Table 7.1.8.1.2-1)
     example_payload:
-      producerId: "producer-001"
-      producerType: "DATA_PRODUCER"
-      supportedDmeTypes:
-        - dmeTypeId: "oran:coverage-kpis:1.0.0"
-          productionJobDefinitionSchema:
-            type: "object"
-            properties:
-              cellIdList:
-                type: "array"
-                items:
-                  type: "string"
-              measurementTypes:
-                type: "array"
-                items:
-                  type: "string"
-          supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING_KAFKA"]
-          dataDeliverySchemaId: "coverage-kpi-delivery-schema-v1"
-      jobCallbackUri: "http://rapp.example.com/data-producer/job-callback"
+      # DmeTypeRelatedCapabilities structure
+      dmeTypeDefinition:
+        # DmeTypeDefinition (Table 7.1.8.1.3-1)
+        dmeTypeId:
+          dmeTypeName: "coverage-kpis"
+          dmeTypeVersion: "1.0.0"
+          namespace: "oran"
+        metadata:
+          dataCategory: ["PM"]
+          rat: ["5G"]
+        dataProductionSchema:
+          type: "object"
+          properties:
+            cellIdList:
+              type: "array"
+              items:
+                type: "string"
+            measurementTypes:
+              type: "array"
+              items:
+                type: "string"
+        dataDeliverySchemas:
+          - type: "JSON_SCHEMA"
+            deliverySchemaId: "coverage-kpi-delivery-schema-v1"
+            schema: "{\"type\":\"object\",\"properties\":{\"cellId\":{\"type\":\"string\"}}}"
+        dataDeliveryMechanisms:
+          - deliveryMethod: "PUSH_HTTP"
+          - deliveryMethod: "STREAMING_KAFKA"
+      dataAccessEndpoint:
+        ipv4Addr: "192.168.1.100"
+        port: 8443
+      dataDeliveryMode: ["CONTINUOUS", "ONE_TIME"]
 
-  - name: "Get producer registration"
-    uri: "{apiRoot}/data-producer/v1/registrations/{producerRegistrationId}"
+  - name: "Query DME type registration"
+    uri: "{apiRoot}/data-registration/v2/production-capabilities/{registrationId}"
     method: "GET"
     response_code: 200
+    api_version: "2.0.0-alpha.2"
+    description: "Query a registered DME type capability (R1AP Section 7.1.4.4)"
     example_payload: null
 
-  - name: "Update producer registration"
-    uri: "{apiRoot}/data-producer/v1/registrations/{producerRegistrationId}"
+  - name: "Update DME type registration"
+    uri: "{apiRoot}/data-registration/v2/production-capabilities/{registrationId}"
     method: "PUT"
     response_code: 200
+    api_version: "2.0.0-alpha.2"
+    description: "Update a registered DME type capability (R1AP Section 7.1.4.3)"
     example_payload:
-      producerId: "producer-001"
-      supportedDmeTypes:
-        - dmeTypeId: "oran:coverage-kpis:1.0.0"
-          supportedDeliveryMethods: ["PUSH_HTTP", "PULL_HTTP", "STREAMING_KAFKA"]
+      dmeTypeDefinition:
+        dmeTypeId:
+          dmeTypeName: "coverage-kpis"
+          dmeTypeVersion: "1.0.0"
+          namespace: "oran"
+        dataDeliveryMechanisms:
+          - deliveryMethod: "PUSH_HTTP"
+          - deliveryMethod: "PULL_HTTP"
+          - deliveryMethod: "STREAMING_KAFKA"
+      dataDeliveryMode: ["CONTINUOUS", "ONE_TIME"]
 
-  - name: "Deregister data producer"
-    uri: "{apiRoot}/data-producer/v1/registrations/{producerRegistrationId}"
+  - name: "Deregister DME type"
+    uri: "{apiRoot}/data-registration/v2/production-capabilities/{registrationId}"
     method: "DELETE"
     response_code: 204
+    api_version: "2.0.0-alpha.2"
+    description: "Deregister DME type production capability (R1AP Section 7.1.4.2)"
     example_payload: null
 
-# --- DME Type Discovery ---
-# Reference: O-RAN.WG2.R1AP-v06.00 Section on Data Discovery
-# Response type: array(DmeTypeRelatedCapabilities) - defined in R1AP OpenAPI
-#
-# dmeTypeId format: String in form "<namespace>:<name>:<version>"
-#   Example: "oran:coverage-kpis:1.0.0"
-#   Note: Version is commonly semantic (e.g., "1.0.0") for interoperability
-#
-# data-category query param:
-#   - Values are IMPLEMENTATION-DEPENDENT (check your SMO's supported values)
-#   - R1AP defines the parameter but exact enum values vary by implementation
-#   - Safest approach: query without filter first, then use returned values
-#
-# IMPORTANT: Response field names below are ILLUSTRATIVE.
-# Actual field names must match DmeTypeRelatedCapabilities as defined in R1AP OpenAPI.
-# Consult your R1AP version for exact wire-format field names.
+# =========================================================================
+# SECTION 7.2: Data Discovery API (R1AP v08.00 Section 7.2)
+# =========================================================================
+# API Version: 2.0.0
+# apiName: data-discovery
+# Reference: R1AP Table 7.2.3-1, Table 7.1.8.1.2-1
 data_discovery:
   - name: "Discover all DME types"
     uri: "{apiRoot}/data-discovery/v2/dme-types"
     method: "GET"
     response_code: 200
+    api_version: "2.0.0"
+    description: |
+      Discover available DME types. R1AP v08.00 Section 7.2.4.1.
+      Response: array(DmeTypeRelatedCapabilities)
     query_params:
       - name: "dme-type-id"
         required: false
-        description: "Filter by specific DME type identifier (string format)"
+        description: "Filter by specific DME type identifier"
       - name: "data-category"
         required: false
-        description: "Filter by data category (IMPLEMENTATION-DEPENDENT - use values from your SMO)"
+        description: "Filter by data category (implementation-dependent)"
     example_payload: null
     example_response:
-      # Response is array(DmeTypeRelatedCapabilities) per R1AP OpenAPI
-      # dmeTypeId is a STRING: "<namespace>:<name>:<version>"
-      # NOTE: Field names below are ILLUSTRATIVE - verify against your R1AP spec
+      # Response is array(DmeTypeRelatedCapabilities) per R1AP v08.00
       - dmeTypeDefinition:
-          dmeTypeId: "oran:coverage-kpis:1.0.0"
+          dmeTypeId:
+            dmeTypeName: "coverage-kpis"
+            dmeTypeVersion: "1.0.0"
+            namespace: "oran"
+          metadata:
+            dataCategory: ["PM"]
+            rat: ["5G"]
           dataProductionSchema:
             type: "object"
             properties:
               cellIdList:
                 type: "array"
-                items:
-                  type: "string"
               measurementTypes:
                 type: "array"
-                items:
-                  type: "string"
-              reportingPeriod:
-                type: "integer"
-                minimum: 1
           dataDeliverySchemas:
-            - schemaId: "coverage-kpi-delivery-schema-v1"
-              schema:
-                type: "object"
-                properties:
-                  cellId:
-                    type: "string"
-                  rsrp_dbm:
-                    type: "number"
-                  rsrq_db:
-                    type: "number"
-                  sinr_db:
-                    type: "number"
-        dataAccessEndpoint: "https://smo.operator.com/data-access/v1"
-        dataDeliveryModes:
-          - deliveryMode: "CONTINUOUS"
-            supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING_KAFKA"]
-          - deliveryMode: "ONE_TIME"
-            supportedDeliveryMethods: ["PUSH_HTTP", "PULL_HTTP"]
+            - type: "JSON_SCHEMA"
+              deliverySchemaId: "coverage-kpi-delivery-schema-v1"
+          dataDeliveryMechanisms:
+            - deliveryMethod: "PUSH_HTTP"
+            - deliveryMethod: "STREAMING_KAFKA"
+        dataAccessEndpoint:
+          ipv4Addr: "smo.operator.com"
+          port: 443
+        dataDeliveryMode: ["CONTINUOUS", "ONE_TIME"]
       - dmeTypeDefinition:
-          dmeTypeId: "oran:capacity-kpis:1.0.0"
-        dataAccessEndpoint: "https://smo.operator.com/data-access/v1"
-        dataDeliveryModes:
-          - deliveryMode: "CONTINUOUS"
-            supportedDeliveryMethods: ["PUSH_HTTP", "STREAMING_KAFKA"]
-      - dmeTypeDefinition:
-          dmeTypeId: "oran:cell-config:1.0.0"
-        dataAccessEndpoint: "https://smo.operator.com/data-access/v1"
-        dataDeliveryModes:
-          - deliveryMode: "ONE_TIME"
-            supportedDeliveryMethods: ["PUSH_HTTP", "PULL_HTTP"]
+          dmeTypeId:
+            dmeTypeName: "capacity-kpis"
+            dmeTypeVersion: "1.0.0"
+            namespace: "oran"
+          metadata:
+            dataCategory: ["PM"]
+            rat: ["5G"]
+        dataDeliveryMode: ["CONTINUOUS"]
 
-  - name: "Get DME type details"
+  - name: "Query capabilities for specific DME type"
     uri: "{apiRoot}/data-discovery/v2/dme-types/{dmeTypeId}"
     method: "GET"
     response_code: 200
-    example_payload: null
-
-  - name: "Subscribe to DME type availability changes"
-    uri: "{apiRoot}/data-discovery/v2/dme-type-subscriptions"
-    method: "POST"
-    response_code: 201
-    response_headers:
-      Location: "{apiRoot}/data-discovery/v2/dme-type-subscriptions/{subscriptionId}"
-    example_payload:
-      callbackUri: "http://rapp.example.com/dme-type-notifications"
-      # dataCategory filter values are IMPLEMENTATION-DEPENDENT
-      dmeTypeFilters: []
-      eventTypes: ["DME_TYPE_AVAILABLE", "DME_TYPE_UNAVAILABLE"]
-
-  - name: "Delete DME type subscription"
-    uri: "{apiRoot}/data-discovery/v2/dme-type-subscriptions/{subscriptionId}"
-    method: "DELETE"
-    response_code: 204
+    api_version: "2.0.0"
+    description: "Query capabilities related to a specific DME type (R1AP Section 7.2.4.2)"
     example_payload: null
 
 # --- Data Access (Data Jobs) ---
-# Reference: O-RAN.WG2.R1AP-v06.00 Section on Data Access
+# Reference: O-RAN.WG2.TS.R1AP-R004-v08.00 Section 7.3, O-RAN.WG2.TS.R1TD-R004-v04.01
+# API Version: 2.0.0-alpha.2 (per Table 5.1-1)
 #
-# dmeTypeId format: String "<namespace>:<name>:<version>"
+# DataJobInfo structure (R1AP Table 7.3.8.1.2-1):
+#   - dataJobId: Unique identifier (consumer-provided or auto-generated)
+#   - dmeTypeId: Reference to the DME type (format: "NAMESPACE:Name:Version")
+#   - dataJobDefinition: Data production schema per R1TD v04.01 Section 5.1.4.2
+#       - dataSelector: ManagementData selection (mgtDataCategory OR mgtDataName)
+#       - targetSelector: NodeFilter OR objectInstances (DnList)
+#       - timing: CollectionWindow, GranularityPeriod, ReportingPeriod
+#   - dataDeliveryMode: ONE_TIME or CONTINUOUS
+#   - dataDeliveryMethod: PUSH_HTTP, PULL_HTTP, or STREAMING_KAFKA
+#   - dataDeliverySchemaId: Reference to delivery format schema
+#   - pushDeliveryDetailsHttp/pullDeliveryDetailsHttp: Delivery endpoint details
+#   - dataAvailabilityNotificationUri: Callback for data availability notifications
 #
-# IMPORTANT: R1AP DataJobInfo attributes (normative):
-#   - dmeTypeId, productionJobDefinition, dataDeliveryMode, dataDeliveryMethod
-#   - dataDeliverySchemaId, pushDeliveryDetailsHttp/pullDeliveryDetailsHttp
-#   - dataAvailabilityNotificationUri (optional - for DataAvailabilityNotification)
+# Standard DME Types (R1TD v04.01 Section 5.2):
+#   - ORAN:RanOamPmData:1.0.0 - RAN OAM PM data (3GPP/O-RAN measurements)
+#   - ORAN:RanOamTraceMetrics:1.0.0 - RAN OAM Trace Metrics (3GPP TS 32.423)
 #
-# NOTE: "jobOwner" is NOT part of R1AP DataJobInfo. Ownership should be
-# determined via authN/authZ context (token subject) or vendor extension.
-#
-# PUSH_HTTP Data Delivery:
-#   - R1AP does NOT define OpenAPI for HTTP-based Push data delivery
-#   - Payload format is IMPLEMENTATION-SPECIFIC (defined by dataDeliverySchemaId)
-#   - Wire format is NOT standardized by R1AP
-#
-# DataAvailabilityNotification (separate mechanism):
-#   - Posted to dataAvailabilityNotificationUri with 204 No Content response
-#   - Different from actual data push
+# Data delivery methods:
+#   - PUSH_HTTP: Producer pushes data to consumer's dataPushUri
+#   - PULL_HTTP: Consumer pulls data from producer's dataPullUri
+#   - STREAMING_KAFKA: Data delivered via Kafka topics
 data_access:
-  - name: "Create data job"
-    uri: "{apiRoot}/data-access/v1/data-jobs"
+  - name: "Create data job for PM data (R1TD compliant)"
+    uri: "{apiRoot}/data-access/v2/data-jobs"
     method: "POST"
     response_code: 201
+    api_version: "2.0.0-alpha.2"
+    description: |
+      Create a data job using R1TD v04.01 compliant dataJobDefinition structure.
+      Uses ORAN:RanOamPmData:1.0.0 DME type with dataSelector, targetSelector, timing.
+      R1AP v08.00 Section 7.3.4.1, R1TD v04.01 Section 5.2.2.
     response_headers:
-      Location: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
+      Location: "{apiRoot}/data-access/v2/data-jobs/{dataJobId}"
     example_payload:
-      dmeTypeId: "oran:coverage-kpis:1.0.0"
-      productionJobDefinition:
-        cellIdList: ["cell_1", "cell_2"]
-        measurementTypes: ["rsrp_dbm", "rsrq_db", "sinr_db"]
-        reportingPeriod: 60
+      dataJobId: "job-pm-coverage-001"
+      # DME Type ID format per R1TD: NAMESPACE:Name:Version
+      dmeTypeId: "ORAN:RanOamPmData:1.0.0"
+      # Data production schema per R1TD v04.01 Section 5.1.4.2
+      dataJobDefinition:
+        # DataSelector (R1TD Table 5.2.2.3.1.1-1) - uses ManagementData
+        dataSelector:
+          managementData:
+            # Option 1: Select by measurement names
+            mgtDataName:
+              - "RRU.PrbUsedDl"
+              - "RRU.PrbUsedUl"
+              - "L1M.RS-SINR"
+              - "RACH.PreambleDedicated"
+        # TargetSelector (R1TD Table 5.2.2.3.1.2-1) - NodeFilter OR objectInstances
+        targetSelector:
+          # Option: Use objectInstances (DnList) with 3GPP DN format
+          objectInstances:
+            - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=NRCell-100"
+            - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=NRCell-101"
+        # Timing (R1TD Table 5.2.2.3.1.3-1)
+        timing:
+          collectionWindow:
+            startTime: "08:00:00"
+            stopTime: "20:00:00"
+          granularityPeriod: 900
+          reportingPeriod: 3600
       dataDeliveryMode: "CONTINUOUS"
       dataDeliveryMethod: "PUSH_HTTP"
-      dataDeliverySchemaId: "coverage-kpi-delivery-schema-v1"
+      dataDeliverySchemaId: "RanOamPmData-JSON-v1"
       pushDeliveryDetailsHttp:
-        dataPushUri: "http://rapp.example.com/data-delivery/coverage"
+        dataPushUri: "https://rapp.example.com/data-delivery/pm-data"
     example_response:
-      dataJobId: "job-12345"
-      dmeTypeId: "oran:coverage-kpis:1.0.0"
-      status: "RUNNING"
+      dataJobId: "job-pm-coverage-001"
+      dmeTypeId: "ORAN:RanOamPmData:1.0.0"
+      dataJobStatus: "ENABLED"
+
+  - name: "Create data job with NodeFilter targeting"
+    uri: "{apiRoot}/data-access/v2/data-jobs"
+    method: "POST"
+    response_code: 201
+    api_version: "2.0.0-alpha.2"
+    description: |
+      Create data job using NodeFilter for target selection (R1TD v04.01).
+      NodeFilter allows selection by areaOfInterest, networkDomain, cPuPType, sst.
+    response_headers:
+      Location: "{apiRoot}/data-access/v2/data-jobs/{dataJobId}"
+    example_payload:
+      dataJobId: "job-pm-area-001"
+      dmeTypeId: "ORAN:RanOamPmData:1.0.0"
+      dataJobDefinition:
+        dataSelector:
+          managementData:
+            # Option 2: Select by data category
+            mgtDataCategory: "PERFORMANCE_COUNTERS"
+        targetSelector:
+          # Use NodeFilter with areaOfInterest (R1TD Section 5.2.2.4.1)
+          nodeFilter:
+            areaOfInterest:
+              # Select cells by NRCGI list
+              nrCellIdList:
+                - plmnIdentity:
+                    mcc: "310"
+                    mnc: "410"
+                  nrCellIdentity: "000000001"
+                - plmnIdentity:
+                    mcc: "310"
+                    mnc: "410"
+                  nrCellIdentity: "000000002"
+            networkDomain: "RAN"
+            sst: 1
+        timing:
+          collectionWindow:
+            startTime: "00:00:00"
+          granularityPeriod: 300
+      dataDeliveryMode: "CONTINUOUS"
+      dataDeliveryMethod: "PUSH_HTTP"
+      pushDeliveryDetailsHttp:
+        dataPushUri: "https://rapp.example.com/data-delivery/area-pm"
 
   - name: "Create one-time data request (PUSH)"
-    uri: "{apiRoot}/data-access/v1/data-jobs"
+    uri: "{apiRoot}/data-access/v2/data-jobs"
     method: "POST"
     response_code: 201
+    api_version: "2.0.0-alpha.2"
+    description: |
+      Create a one-time data request with PUSH delivery (R1AP v08.00 Section 7.3.4.1).
+      Uses R1TD v04.01 compliant structure for historical data retrieval.
     response_headers:
-      Location: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
+      Location: "{apiRoot}/data-access/v2/data-jobs/{dataJobId}"
     example_payload:
-      dmeTypeId: "oran:cell-config:1.0.0"
-      productionJobDefinition:
-        cellIdList: ["cell_1"]
-        attributes: ["pMax", "nRPCI", "nRTAC"]
+      dataJobId: "job-config-snapshot-001"
+      dmeTypeId: "ORAN:RanOamPmData:1.0.0"
+      dataJobDefinition:
+        dataSelector:
+          managementData:
+            mgtDataName:
+              - "pMax"
+              - "nRPCI"
+              - "nRTAC"
+        targetSelector:
+          objectInstances:
+            - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=NRCell-100"
+        timing:
+          collectionWindow:
+            startTime: "00:00:00"
+            stopTime: "23:59:59"
+          granularityPeriod: 900
       dataDeliveryMode: "ONE_TIME"
       dataDeliveryMethod: "PUSH_HTTP"
       pushDeliveryDetailsHttp:
-        dataPushUri: "http://rapp.example.com/data-delivery/config"
+        dataPushUri: "https://rapp.example.com/data-delivery/config"
 
-  # PULL_HTTP pattern: Consumer requests data, producer provides dataPullUri in response
-  # For PULL_HTTP: consumer provides dataAvailabilityNotificationUri for producer to notify when ready
-  # Producer provides pullDeliveryDetailsHttp.dataPullUri in response
   - name: "Create data job with PULL delivery"
-    uri: "{apiRoot}/data-access/v1/data-jobs"
+    uri: "{apiRoot}/data-access/v2/data-jobs"
     method: "POST"
     response_code: 201
+    api_version: "2.0.0-alpha.2"
+    description: |
+      Create data job with PULL_HTTP delivery method (R1AP v08.00 Section 7.3.4.1).
+      Consumer provides dataAvailabilityNotificationUri for notification when data is ready.
+      Producer provides pullDeliveryDetailsHttp.dataPullUri in response.
     response_headers:
-      Location: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
+      Location: "{apiRoot}/data-access/v2/data-jobs/{dataJobId}"
     example_payload:
-      dmeTypeId: "oran:pm-data:1.0.0"
-      productionJobDefinition:
-        cellIdList: ["cell_1", "cell_2"]
-        measurementTypes: ["throughput_dl_mbps", "throughput_ul_mbps"]
-        timeRange:
-          startTime: "2024-01-14T00:00:00Z"
-          endTime: "2024-01-15T00:00:00Z"
+      dataJobId: "job-pm-historical-001"
+      dmeTypeId: "ORAN:RanOamPmData:1.0.0"
+      dataJobDefinition:
+        dataSelector:
+          managementData:
+            mgtDataName:
+              - "DRB.UEThpDl"
+              - "DRB.UEThpUl"
+              - "RRU.PrbUsedDl"
+        targetSelector:
+          objectInstances:
+            - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=NRCell-100"
+            - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=NRCell-101"
+        timing:
+          collectionWindow:
+            startTime: "00:00:00"
+            stopTime: "23:59:59"
+          granularityPeriod: 900
       dataDeliveryMode: "ONE_TIME"
       dataDeliveryMethod: "PULL_HTTP"
-      dataDeliverySchemaId: "pm-data-schema-v1"
-      # For PULL_HTTP: consumer provides notification URI for data availability
-      dataAvailabilityNotificationUri: "http://rapp.example.com/notifications/data-ready"
+      dataDeliverySchemaId: "RanOamPmData-JSON-v1"
+      dataAvailabilityNotificationUri: "https://rapp.example.com/notifications/data-ready"
     example_response:
-      dataJobId: "job-pull-001"
-      dmeTypeId: "oran:pm-data:1.0.0"
-      status: "COMPLETED"
-      # Producer provides the URI where consumer can pull data
+      dataJobId: "job-pm-historical-001"
+      dmeTypeId: "ORAN:RanOamPmData:1.0.0"
+      dataJobStatus: "ENABLED"
       pullDeliveryDetailsHttp:
-        dataPullUri: "https://data-producer.example.com/data/job-pull-001"
+        dataPullUri: "https://data-producer.example.com/data/job-pm-historical-001"
 
   - name: "Get data job"
-    uri: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
+    uri: "{apiRoot}/data-access/v2/data-jobs/{dataJobId}"
     method: "GET"
     response_code: 200
+    api_version: "2.0.0-alpha.2"
+    description: "Read individual data job details (R1AP v08.00 Section 7.3.4.2)"
     example_payload: null
     example_response:
-      dataJobId: "job-12345"
-      dmeTypeId: "oran:coverage-kpis:1.0.0"
-      status: "RUNNING"
+      dataJobId: "job-pm-coverage-001"
+      dmeTypeId: "ORAN:RanOamPmData:1.0.0"
+      dataJobStatus: "ENABLED"
       dataDeliveryMode: "CONTINUOUS"
       dataDeliveryMethod: "PUSH_HTTP"
-      createdAt: "2024-01-15T10:00:00Z"
-
-  - name: "Get data job status"
-    uri: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}/status"
-    method: "GET"
-    response_code: 200
-    example_payload: null
-    example_response:
-      dataJobId: "job-12345"
-      status: "RUNNING"
-      lastDataDelivery: "2024-01-15T10:30:00Z"
-      deliveryCount: 30
+      dataJobDefinition:
+        dataSelector:
+          managementData:
+            mgtDataName: ["RRU.PrbUsedDl", "RRU.PrbUsedUl"]
+        targetSelector:
+          objectInstances:
+            - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=NRCell-100"
+        timing:
+          collectionWindow:
+            startTime: "08:00:00"
+          granularityPeriod: 900
 
   - name: "Update data job"
-    uri: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
+    uri: "{apiRoot}/data-access/v2/data-jobs/{dataJobId}"
     method: "PUT"
     response_code: 200
+    api_version: "2.0.0-alpha.2"
+    description: |
+      Update an existing data job (R1AP v08.00 Section 7.3.4.3).
+      Uses R1TD v04.01 compliant dataJobDefinition structure.
     example_payload:
-      dmeTypeId: "oran:coverage-kpis:1.0.0"
-      productionJobDefinition:
-        cellIdList: ["cell_1", "cell_2", "cell_3"]
-        measurementTypes: ["rsrp_dbm", "rsrq_db", "sinr_db"]
-        reportingPeriod: 30
+      dataJobId: "job-pm-coverage-001"
+      dmeTypeId: "ORAN:RanOamPmData:1.0.0"
+      dataJobDefinition:
+        dataSelector:
+          managementData:
+            mgtDataName:
+              - "RRU.PrbUsedDl"
+              - "RRU.PrbUsedUl"
+              - "L1M.RS-SINR"
+        targetSelector:
+          objectInstances:
+            - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=NRCell-100"
+            - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=NRCell-101"
+            - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=NRCell-102"
+        timing:
+          collectionWindow:
+            startTime: "06:00:00"
+            stopTime: "22:00:00"
+          granularityPeriod: 300
+          reportingPeriod: 1800
       dataDeliveryMode: "CONTINUOUS"
       dataDeliveryMethod: "PUSH_HTTP"
       pushDeliveryDetailsHttp:
-        dataPushUri: "http://rapp.example.com/data-delivery/coverage"
+        dataPushUri: "https://rapp.example.com/data-delivery/pm-data"
 
   - name: "Delete data job"
-    uri: "{apiRoot}/data-access/v1/data-jobs/{dataJobId}"
+    uri: "{apiRoot}/data-access/v2/data-jobs/{dataJobId}"
     method: "DELETE"
     response_code: 204
+    api_version: "2.0.0-alpha.2"
+    description: "Delete a data job (R1AP v08.00 Section 7.3.4.4)"
     example_payload: null
 
   - name: "List all data jobs"
-    uri: "{apiRoot}/data-access/v1/data-jobs"
+    uri: "{apiRoot}/data-access/v2/data-jobs"
     method: "GET"
     response_code: 200
+    api_version: "2.0.0-alpha.2"
+    description: "Query all data jobs with optional filtering (R1AP v08.00 Section 7.3.4.5)"
     query_params:
-      - name: "jobOwner"
-        required: false
       - name: "dmeTypeId"
         required: false
-      - name: "status"
+        description: "Filter by DME type identifier (e.g., ORAN:RanOamPmData:1.0.0)"
+      - name: "dataJobStatus"
         required: false
+        description: "Filter by job status (ENABLED, DISABLED)"
     example_payload: null
+    example_response:
+      - dataJobId: "job-pm-coverage-001"
+        dmeTypeId: "ORAN:RanOamPmData:1.0.0"
+        dataJobStatus: "ENABLED"
+      - dataJobId: "job-capacity-001"
+        dmeTypeId:
+          dmeTypeName: "capacity-kpis"
+          dmeTypeVersion: "1.0.0"
+          namespace: "oran"
+        dataJobStatus: "ENABLED"
 
-# --- Data Offers (for historical/bulk data) ---
-data_offers:
+# --- Data Offer ---
+# Reference: O-RAN.WG2.TS.R1AP-R004-v08.00 Section 7.4
+# API Version: 1.0.0 (per Table 5.1-1)
+#
+# Data Offer allows data producers to advertise available data sets.
+# Consumers can discover and access offered data via separate HTTP Pull/Push APIs.
+data_offer:
   - name: "Create data offer"
-    uri: "{apiRoot}/data-access/v1/data-offers"
+    uri: "{apiRoot}/data-offer/v1/offers"
     method: "POST"
     response_code: 201
+    api_version: "1.0.0"
+    description: |
+      Create a data offer to advertise available data. R1AP v08.00 Section 7.4.4.1.
+      Producer uses this to announce data availability to potential consumers.
     response_headers:
-      Location: "{apiRoot}/data-access/v1/data-offers/{dataOfferId}"
+      Location: "{apiRoot}/data-offer/v1/offers/{offerId}"
     example_payload:
-      dmeTypeId: "oran:historical-kpis:1.0.0"
+      offerId: "offer-historical-pm-001"
+      dmeTypeId:
+        dmeTypeName: "historical-pm-data"
+        dmeTypeVersion: "1.0.0"
+        namespace: "oran"
       dataCharacteristics:
         timeRange:
           startTime: "2024-01-01T00:00:00Z"
           endTime: "2024-01-31T23:59:59Z"
         granularityPeriod: 300
-        cellIdList: ["cell_1", "cell_2"]
-      supportedDeliveryMethod: "PULL_HTTP"
+        cellIdList: ["NRCellDU-001", "NRCellDU-002"]
+        measurementTypes: ["throughput_dl_mbps", "prb_utilization_dl_pct"]
+      supportedDeliveryMethods: ["PULL_HTTP"]
       offerExpirationTime: "2024-12-31T23:59:59Z"
       pullDeliveryDetailsHttp:
-        dataFetchUri: "http://data-lake.example.com/kpi-data/batch-001"
+        dataPullUri: "https://data-lake.example.com/historical-pm/batch-001"
+    example_response:
+      offerId: "offer-historical-pm-001"
+      offerStatus: "ACTIVE"
 
   - name: "Get data offer"
-    uri: "{apiRoot}/data-access/v1/data-offers/{dataOfferId}"
+    uri: "{apiRoot}/data-offer/v1/offers/{offerId}"
     method: "GET"
     response_code: 200
+    api_version: "1.0.0"
+    description: "Read individual data offer details (R1AP v08.00 Section 7.4.4.2)"
+    example_payload: null
+    example_response:
+      offerId: "offer-historical-pm-001"
+      dmeTypeId:
+        dmeTypeName: "historical-pm-data"
+        dmeTypeVersion: "1.0.0"
+        namespace: "oran"
+      offerStatus: "ACTIVE"
+      supportedDeliveryMethods: ["PULL_HTTP"]
+      pullDeliveryDetailsHttp:
+        dataPullUri: "https://data-lake.example.com/historical-pm/batch-001"
+
+  - name: "List data offers"
+    uri: "{apiRoot}/data-offer/v1/offers"
+    method: "GET"
+    response_code: 200
+    api_version: "1.0.0"
+    description: "Query all available data offers with optional filtering (R1AP v08.00 Section 7.4.4.3)"
+    query_params:
+      - name: "dmeTypeId"
+        required: false
+        description: "Filter by DME type identifier"
+      - name: "offerStatus"
+        required: false
+        description: "Filter by offer status (ACTIVE, EXPIRED)"
     example_payload: null
 
   - name: "Delete data offer"
-    uri: "{apiRoot}/data-access/v1/data-offers/{dataOfferId}"
+    uri: "{apiRoot}/data-offer/v1/offers/{offerId}"
     method: "DELETE"
     response_code: 204
+    api_version: "1.0.0"
+    description: "Withdraw a data offer (R1AP v08.00 Section 7.4.4.4)"
     example_payload: null
 
-  - name: "Terminate data offer"
-    uri: "{apiRoot}/r1-data-management/v1/data-offers/{offerId}"
+# --- HTTP Push Data ---
+# Reference: O-RAN.WG2.TS.R1AP-R004-v08.00 Section 7.5
+# API Version: 1.0.0 (per Table 5.1-1)
+#
+# Used by data producers to push data to consumers.
+# The consumer endpoint is specified in the DataJobInfo.pushDeliveryDetailsHttp.
+http_push_data:
+  - name: "Push data to consumer"
+    uri: "{consumerCallbackUri}"
+    method: "POST"
+    response_code: 200
+    api_version: "1.0.0"
+    description: |
+      Data producer pushes data to consumer's callback URI. R1AP v08.00 Section 7.5.4.1.
+      The URI is the dataPushUri provided by consumer when creating the data job.
+      Content format is defined by the dataDeliverySchemaId in the data job.
+    example_payload:
+      dataJobId: "job-coverage-001"
+      timestamp: "2024-01-15T10:30:00Z"
+      data:
+        - cellId: "NRCellDU-001"
+          measurements:
+            rsrp_dbm: -85.5
+            rsrq_db: -11.2
+            sinr_db: 15.3
+        - cellId: "NRCellDU-002"
+          measurements:
+            rsrp_dbm: -78.2
+            rsrq_db: -9.5
+            sinr_db: 18.7
+
+  - name: "Notify data availability"
+    uri: "{dataAvailabilityNotificationUri}"
+    method: "POST"
+    response_code: 204
+    api_version: "1.0.0"
+    description: |
+      Notify consumer that data is available for pull. R1AP v08.00 Section 7.5.4.2.
+      Used with PULL_HTTP delivery method to signal data readiness.
+    example_payload:
+      dataJobId: "job-pm-historical-001"
+      notificationType: "DATA_AVAILABLE"
+      dataPullUri: "https://data-producer.example.com/data/job-pm-historical-001/batch-001"
+
+# --- HTTP Pull Data ---
+# Reference: O-RAN.WG2.TS.R1AP-R004-v08.00 Section 7.6
+# API Version: 1.0.0 (per Table 5.1-1)
+#
+# Used by data consumers to pull data from producers.
+# The producer endpoint is specified in pullDeliveryDetailsHttp or data availability notification.
+http_pull_data:
+  - name: "Pull data from producer"
+    uri: "{dataPullUri}"
+    method: "GET"
+    response_code: 200
+    api_version: "1.0.0"
+    description: |
+      Consumer pulls data from producer's data pull URI. R1AP v08.00 Section 7.6.4.1.
+      The URI is provided by producer in the data job response or data availability notification.
+      Content format is defined by the dataDeliverySchemaId in the data job.
+    example_payload: null
+    example_response:
+      dataJobId: "job-pm-historical-001"
+      timestamp: "2024-01-15T00:00:00Z"
+      timeRange:
+        startTime: "2024-01-14T00:00:00Z"
+        endTime: "2024-01-15T00:00:00Z"
+      data:
+        - cellId: "NRCellDU-001"
+          measurements:
+            - timestamp: "2024-01-14T00:00:00Z"
+              throughput_dl_mbps: 125.5
+              throughput_ul_mbps: 45.2
+            - timestamp: "2024-01-14T00:15:00Z"
+              throughput_dl_mbps: 132.1
+              throughput_ul_mbps: 48.7
+
+# --- Fault Management (O1 via R1) ---
+# Reference: O-RAN.WG2.TS.R1AP-R004-v08.00 Section 8.1
+# Based on 3GPP TS 28.532 ProvMnS (Provisioning Management Service)
+#
+# Allows rApps to access alarm information and subscribe to alarm notifications.
+# LDN (Local Distinguished Name) identifies the managed element hierarchy.
+fault_management:
+  - name: "Read alarm list"
+    uri: "{apiRoot}/ProvMnS/v1/{LDN}/AlarmList={id}"
+    method: "GET"
+    response_code: 200
+    api_version: "1.0.0"
+    description: |
+      Read alarm list for a managed element. R1AP v08.00 Section 8.1.4.1.
+      LDN format: /ManagedElement=<meId>[/SubNetwork=<snId>][/NRCellDU=<cellId>]
+    example_payload: null
+    example_response:
+      id: "alarmList-001"
+      alarmRecords:
+        - alarmId: "alarm-001"
+          objectInstance: "/ManagedElement=gNB-001/NRCellDU=NRCellDU-001"
+          alarmType: "CommunicationsAlarm"
+          probableCause: "LossOfSignal"
+          perceivedSeverity: "MAJOR"
+          alarmRaisedTime: "2024-01-15T10:30:00Z"
+          additionalText: "X2 link to neighboring cell lost"
+        - alarmId: "alarm-002"
+          objectInstance: "/ManagedElement=gNB-001/NRCellDU=NRCellDU-002"
+          alarmType: "QualityOfServiceAlarm"
+          probableCause: "ThresholdCrossed"
+          perceivedSeverity: "WARNING"
+          alarmRaisedTime: "2024-01-15T10:45:00Z"
+          additionalText: "PRB utilization exceeded 85%"
+
+  - name: "Subscribe to alarm notifications"
+    uri: "{apiRoot}/ProvMnS/v1/{LDN}/AlarmList={id}/subscriptions"
+    method: "POST"
+    response_code: 201
+    api_version: "1.0.0"
+    description: "Create alarm notification subscription. R1AP v08.00 Section 8.1.4.2."
+    response_headers:
+      Location: "{apiRoot}/ProvMnS/v1/{LDN}/AlarmList={id}/subscriptions/{subscriptionId}"
+    example_payload:
+      callbackReference: "https://rapp.example.com/alarm-notifications"
+      filter:
+        objectInstances: ["/ManagedElement=gNB-001"]
+        perceivedSeverity: ["MAJOR", "CRITICAL"]
+        alarmTypes: ["CommunicationsAlarm", "QualityOfServiceAlarm"]
+    example_response:
+      subscriptionId: "alarm-sub-001"
+      callbackReference: "https://rapp.example.com/alarm-notifications"
+
+  - name: "Unsubscribe from alarm notifications"
+    uri: "{apiRoot}/ProvMnS/v1/{LDN}/AlarmList={id}/subscriptions/{subscriptionId}"
     method: "DELETE"
     response_code: 204
+    api_version: "1.0.0"
+    description: "Delete alarm notification subscription (R1AP v08.00 Section 8.1.4.3)"
     example_payload: null
 
-# SECTION 5.3: A1-Related Services (R1-AP v5.0 compliant)
+  - name: "Acknowledge alarm"
+    uri: "{apiRoot}/ProvMnS/v1/{LDN}/AlarmList={id}/alarmRecords/{alarmId}"
+    method: "PATCH"
+    response_code: 200
+    api_version: "1.0.0"
+    description: "Acknowledge or clear an alarm (R1AP v08.00 Section 8.1.4.4)"
+    example_payload:
+      ackState: "ACKNOWLEDGED"
+      ackUserId: "operator-001"
+      ackSystemId: "rapp-traffic-optimizer"
+
+# --- Configuration Schema Information ---
+# Reference: O-RAN.WG2.TS.R1AP-R004-v08.00 Section 8.2
+# API Version: 1.0.0 (per Table 5.1-1)
+#
+# Provides RAN OAM configuration schema information to rApps.
+# Allows rApps to understand the configuration model for managed elements.
+config_schema_info:
+  - name: "Get configuration schemas"
+    uri: "{apiRoot}/ran-oam-cm-schema-info/v1/schemas"
+    method: "GET"
+    response_code: 200
+    api_version: "1.0.0"
+    description: |
+      Query available RAN OAM configuration schemas. R1AP v08.00 Section 8.2.4.1.
+      Returns list of supported configuration schemas for network elements.
+    query_params:
+      - name: "schemaName"
+        required: false
+        description: "Filter by schema name (e.g., 'NRCellDU', 'GNBDUFunction')"
+      - name: "schemaVersion"
+        required: false
+        description: "Filter by schema version"
+    example_payload: null
+    example_response:
+      schemas:
+        - schemaId: "schema-nrcelldu-v1"
+          schemaName: "NRCellDU"
+          schemaVersion: "17.2.0"
+          description: "NR Cell DU configuration schema per 3GPP TS 28.541"
+          schemaUri: "https://smo.example.com/schemas/nrcelldu-17.2.0.yang"
+        - schemaId: "schema-gnbdufunction-v1"
+          schemaName: "GNBDUFunction"
+          schemaVersion: "17.2.0"
+          description: "gNB-DU Function configuration schema"
+          schemaUri: "https://smo.example.com/schemas/gnbdufunction-17.2.0.yang"
+
+  - name: "Get specific configuration schema"
+    uri: "{apiRoot}/ran-oam-cm-schema-info/v1/schemas/{schemaId}"
+    method: "GET"
+    response_code: 200
+    api_version: "1.0.0"
+    description: "Retrieve a specific configuration schema definition (R1AP v08.00 Section 8.2.4.2)"
+    example_payload: null
+    example_response:
+      schemaId: "schema-nrcelldu-v1"
+      schemaName: "NRCellDU"
+      schemaVersion: "17.2.0"
+      schemaFormat: "YANG"
+      schemaContent:
+        module: "_3gpp-nr-nrm-nrcelldu"
+        prefix: "nrcelldu3gpp"
+        namespace: "urn:3gpp:sa5:_3gpp-nr-nrm-nrcelldu"
+        attributes:
+          - name: "cellLocalId"
+            type: "uint32"
+            mandatory: true
+          - name: "nRPCI"
+            type: "uint32"
+            mandatory: true
+          - name: "pMax"
+            type: "int32"
+            mandatory: false
+            units: "dBm"
+
+# SECTION 5.3: A1-Related Services (R1AP v08.00 compliant)
 a1_policy_management:
   - name: "Get A1 policy types"
     uri: "{apiRoot}/a1-policy-management/v1/policy-types"
@@ -692,6 +1251,84 @@ aiml_model_storage:
     method: "DELETE"
     response_code: 204
     example_payload: null
+
+# --- AI/ML Model Retrieve ---
+# Reference: O-RAN.WG2.TS.R1AP-R004-v08.00 Section 10
+# API Version: 1.0.0-alpha.2 (per Table 5.1-1)
+#
+# Provides capability to retrieve/download ML model artifacts.
+# Separate from model storage which handles upload/metadata.
+aiml_model_retrieve:
+  - name: "Retrieve model artifact content"
+    uri: "{apiRoot}/ml-model-retrieve/v1/models/{modelId}/artifact"
+    method: "GET"
+    response_code: 200
+    api_version: "1.0.0-alpha.2"
+    description: |
+      Retrieve/download the actual ML model artifact content. R1AP v08.00 Section 10.2.4.1.
+      Returns the binary model file (ONNX, SavedModel, etc.) for deployment.
+    example_payload: null
+    example_response:
+      # Binary model content returned with appropriate Content-Type
+      # Content-Type: application/octet-stream or application/x-onnx
+      _note: "Binary model artifact data returned"
+
+  - name: "Get model artifact metadata"
+    uri: "{apiRoot}/ml-model-retrieve/v1/models/{modelId}"
+    method: "GET"
+    response_code: 200
+    api_version: "1.0.0-alpha.2"
+    description: "Get model artifact metadata including download URLs. R1AP v08.00 Section 10.2.4.2."
+    example_payload: null
+    example_response:
+      modelId: "model-traffic-predictor-001"
+      modelName: "TrafficPredictor"
+      modelVersion: "1.0.0"
+      modelFormat: "ONNX"
+      modelFramework: "PYTORCH"
+      artifactSize: 52428800
+      checksum: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      artifactUri: "https://smo.example.com/ml-model-retrieve/v1/models/model-traffic-predictor-001/artifact"
+      inputSchema:
+        type: "object"
+        properties:
+          historicalKpis:
+            type: "array"
+            items:
+              type: "number"
+      outputSchema:
+        type: "object"
+        properties:
+          predictedLoad:
+            type: "number"
+
+  - name: "List available models for retrieval"
+    uri: "{apiRoot}/ml-model-retrieve/v1/models"
+    method: "GET"
+    response_code: 200
+    api_version: "1.0.0-alpha.2"
+    description: "List all models available for retrieval. R1AP v08.00 Section 10.2.4.3."
+    query_params:
+      - name: "modelName"
+        required: false
+        description: "Filter by model name"
+      - name: "modelFramework"
+        required: false
+        description: "Filter by framework (PYTORCH, TENSORFLOW, ONNX)"
+      - name: "modelFormat"
+        required: false
+        description: "Filter by format (ONNX, SAVEDMODEL, TORCHSCRIPT)"
+    example_payload: null
+    example_response:
+      models:
+        - modelId: "model-traffic-predictor-001"
+          modelName: "TrafficPredictor"
+          modelVersion: "1.0.0"
+          modelFormat: "ONNX"
+        - modelId: "model-anomaly-detector-001"
+          modelName: "AnomalyDetector"
+          modelVersion: "2.1.0"
+          modelFormat: "ONNX"
 
 aiml_model_discovery:
   - name: "Discover AI/ML models"

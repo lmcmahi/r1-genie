@@ -1,16 +1,404 @@
 # r1_schemas.yaml
 # JSON Schema definitions for O-RAN R1 API payloads
-# Aligned with O-RAN.WG2.R1AP-v06.00, O-RAN.WG2.R1TD-v03.00, O-RAN.WG2.R1GAP-v09.00
+# Aligned with O-RAN.WG2.TS.R1AP-R004-v08.00, O-RAN.WG2.TS.R1TD-R004-v04.01
 # and 3GPP CAPIF (TS 29.222)
 # =========================================================================
 #
 # Schema Reference:
 #   - Service Publishing: ServiceAPIDescription (3GPP TS 29.222)
-#   - A1 Policy: A1Policy (O-RAN.WG2.R1AP-v06.00)
-#   - Data Management: DataJobInfo, DmeTypeRelatedCapabilities (O-RAN.WG2.R1AP-v06.00 OpenAPI)
+#   - A1 Policy: A1Policy (O-RAN.WG2.R1AP-v08.00)
+#   - Data Management: DataJobInfo, DmeTypeRelatedCapabilities (O-RAN.WG2.R1AP-v08.00)
+#   - DME Type Definitions: R1TD v04.01 (ORAN:RanOamPmData, ORAN:RanOamTraceMetrics)
 #   - AI/ML: MLModel, MLTrainingJob (O-RAN R1-AIML)
 #   - rApp: rAppRegistration (O-RAN R1-rApp)
 # =========================================================================
+
+# =============================================================================
+# R1TD v04.01 - DME TYPE DEFINITIONS
+# Reference: O-RAN.WG2.TS.R1TD-R004-v04.01
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# DME Type Identifier (R1TD Section 5.1.2.1)
+# Format: NAMESPACE:Name:Version (e.g., ORAN:RanOamPmData:1.0.0)
+# -----------------------------------------------------------------------------
+dme_type_identifier:
+  type: "object"
+  description: "DME Type Identifier per R1TD v04.01 Section 5.1.2.1"
+  properties:
+    namespace:
+      type: "string"
+      description: "Namespace for the DME type (e.g., ORAN, 3GPP)"
+      enum: ["ORAN", "3GPP", "VENDOR"]
+    name:
+      type: "string"
+      description: "Name of the DME type"
+    version:
+      type: "string"
+      description: "Semantic version (e.g., 1.0.0, 1.0.0-alpha.1)"
+      pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9.]+)?$"
+  required: ["namespace", "name", "version"]
+
+# -----------------------------------------------------------------------------
+# Data Category (R1TD Section 5.1.5.3.1)
+# -----------------------------------------------------------------------------
+data_category:
+  type: "string"
+  description: "Data category for DME types per R1TD v04.01 Section 5.1.5.3.1"
+  enum:
+    - "PERFORMANCE_MANAGEMENT_DATA"
+    - "TRACE_DATA"
+    - "CONFIGURATION_DATA"
+    - "FAULT_DATA"
+
+# -----------------------------------------------------------------------------
+# Common Data Types (R1TD Section 5.1.5)
+# -----------------------------------------------------------------------------
+
+# TimeOfDay - RFC 3339 clause 5.6 format (R1TD Section 5.1.5.2)
+time_of_day:
+  type: "string"
+  description: "Time of day per RFC 3339 clause 5.6 (e.g., 20:15:00, 20:15:00-08:00)"
+  pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](Z|[+-][01][0-9]:[0-5][0-9])?$"
+
+# CollectionWindow (R1TD Section 5.1.5.1.1)
+collection_window:
+  type: "object"
+  description: "Collection window per R1TD v04.01 Table 5.1.5.1.1-1"
+  properties:
+    startTime:
+      $ref: "#/time_of_day"
+      description: "Start of collection period (RFC 3339 time-of-day)"
+    stopTime:
+      $ref: "#/time_of_day"
+      description: "End of collection period. If not provided, period is indefinite"
+  required: ["startTime"]
+
+# GranularityPeriod (R1TD Section 5.1.5.2, 3GPP TS 32.401 clause 5.4.1.4)
+granularity_period:
+  type: "integer"
+  description: "Granularity period in seconds per 3GPP TS 32.401 clause 5.4.1.4"
+  minimum: 1
+
+# ReportingPeriod (3GPP TS 32.401 clause 5.4.1.5)
+reporting_period:
+  type: "integer"
+  description: "Reporting period in seconds per 3GPP TS 32.401 clause 5.4.1.5"
+  minimum: 1
+
+# -----------------------------------------------------------------------------
+# Distinguished Name (DN) - 3GPP TS 32.300
+# -----------------------------------------------------------------------------
+dn:
+  type: "string"
+  description: "Distinguished Name per 3GPP TS 32.300 clause 7-8"
+  pattern: "^(/[A-Za-z][A-Za-z0-9]*=[^/]+)+$"
+  examples:
+    - "/ManagedElement=gNB-001"
+    - "/ManagedElement=gNB-001/GNBDUFunction=1"
+    - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=NRCell-100"
+
+dn_list:
+  type: "array"
+  description: "List of Distinguished Names per R1TD v04.01 Table 5.2.2.3.1.4-1"
+  items:
+    $ref: "#/dn"
+  minItems: 1
+
+# -----------------------------------------------------------------------------
+# Cell Identity Structures (R1TD Section 5.2.2.4.1)
+# -----------------------------------------------------------------------------
+
+# PLMN Identity
+plmn_identity:
+  type: "object"
+  description: "PLMN Identity"
+  properties:
+    mcc:
+      type: "string"
+      description: "Mobile Country Code (3 digits)"
+      pattern: "^[0-9]{3}$"
+    mnc:
+      type: "string"
+      description: "Mobile Network Code (2-3 digits)"
+      pattern: "^[0-9]{2,3}$"
+  required: ["mcc", "mnc"]
+
+# NR Cell Global Identity (NRCGI) - R1TD Section 5.2.2.4.1
+nrcgi:
+  type: "object"
+  description: "NR Cell Global Identity per R1TD v04.01"
+  properties:
+    plmnIdentity:
+      $ref: "#/plmn_identity"
+    nrCellIdentity:
+      type: "string"
+      description: "NR Cell Identity (36-bit value)"
+      pattern: "^[0-9A-Fa-f]{9}$"
+  required: ["plmnIdentity", "nrCellIdentity"]
+
+# E-UTRA Cell Global Identity - R1TD Section 5.2.2.4.1
+e_utracgi:
+  type: "object"
+  description: "E-UTRA Cell Global Identity per R1TD v04.01"
+  properties:
+    plmnIdentity:
+      $ref: "#/plmn_identity"
+    e_utraCellIdentity:
+      type: "string"
+      description: "E-UTRA Cell Identity (28-bit value)"
+      pattern: "^[0-9A-Fa-f]{7}$"
+  required: ["plmnIdentity", "e_utraCellIdentity"]
+
+# Tracking Area Identity (TAI)
+tai:
+  type: "object"
+  description: "Tracking Area Identity per R1TD v04.01"
+  properties:
+    mcc:
+      type: "integer"
+      description: "Mobile Country Code"
+    mnc:
+      type: "integer"
+      description: "Mobile Network Code"
+    tac:
+      type: "integer"
+      description: "Tracking Area Code"
+  required: ["mcc", "mnc", "tac"]
+
+# Geographic Coordinate
+geo_coordinate:
+  type: "object"
+  description: "Geographic coordinate for area of interest"
+  properties:
+    latitude:
+      type: "number"
+      minimum: -90
+      maximum: 90
+    longitude:
+      type: "number"
+      minimum: -180
+      maximum: 180
+  required: ["latitude", "longitude"]
+
+# GeoAreaToCellMapping
+geo_area_to_cell_mapping:
+  type: "object"
+  description: "Geographic area to cell mapping per R1TD v04.01"
+  properties:
+    convexGeoPolygon:
+      type: "array"
+      items:
+        $ref: "#/geo_coordinate"
+      minItems: 3
+      description: "Convex polygon defining the geographic area"
+    associationThreshold:
+      type: "integer"
+      description: "Threshold for cell association"
+  required: ["convexGeoPolygon"]
+
+# -----------------------------------------------------------------------------
+# Area of Interest (R1TD Section 5.2.2.4.1)
+# -----------------------------------------------------------------------------
+area_of_interest:
+  type: "object"
+  description: "Area of Interest - one of the selection methods per R1TD v04.01"
+  oneOf:
+    - type: "object"
+      properties:
+        geoAreaToCellMapping:
+          $ref: "#/geo_area_to_cell_mapping"
+      required: ["geoAreaToCellMapping"]
+    - type: "object"
+      properties:
+        taiList:
+          type: "array"
+          items:
+            $ref: "#/tai"
+          minItems: 1
+          maxItems: 8
+      required: ["taiList"]
+    - type: "object"
+      properties:
+        nrCellIdList:
+          type: "array"
+          items:
+            $ref: "#/nrcgi"
+          minItems: 1
+          maxItems: 32
+      required: ["nrCellIdList"]
+    - type: "object"
+      properties:
+        eutraCellIdList:
+          type: "array"
+          items:
+            $ref: "#/e_utracgi"
+          minItems: 1
+          maxItems: 32
+      required: ["eutraCellIdList"]
+
+# -----------------------------------------------------------------------------
+# NodeFilter (R1TD Section 5.2.2.3.1.2, 3GPP TS 28.622 clause 4.3.49)
+# -----------------------------------------------------------------------------
+node_filter:
+  type: "object"
+  description: "Node filter for target selection per R1TD v04.01 and 3GPP TS 28.622"
+  properties:
+    areaOfInterest:
+      $ref: "#/area_of_interest"
+      description: "Geographic or cell-based area selection"
+    networkDomain:
+      type: "string"
+      enum: ["RAN", "CN"]
+      description: "Network domain filter"
+    cPuPType:
+      type: "string"
+      enum: ["CU", "UP"]
+      description: "CU/UP type filter"
+    sst:
+      type: "integer"
+      description: "Slice/Service Type filter"
+
+# -----------------------------------------------------------------------------
+# TargetSelector (R1TD Section 5.2.2.3.1.2)
+# One of NodeFilter OR objectInstances (DnList)
+# -----------------------------------------------------------------------------
+target_selector:
+  type: "object"
+  description: "Target selector per R1TD v04.01 Table 5.2.2.3.1.2-1"
+  oneOf:
+    - type: "object"
+      properties:
+        nodeFilter:
+          $ref: "#/node_filter"
+      required: ["nodeFilter"]
+    - type: "object"
+      properties:
+        objectInstances:
+          $ref: "#/dn_list"
+      required: ["objectInstances"]
+
+# -----------------------------------------------------------------------------
+# ManagementData (R1TD Section 5.2.2.3.1.1, 3GPP TS 28.622 clause 4.3.50)
+# -----------------------------------------------------------------------------
+management_data:
+  type: "object"
+  description: "Management data selector per R1TD v04.01 Table 5.2.2.3.1.1-1"
+  oneOf:
+    - type: "object"
+      properties:
+        mgtDataCategory:
+          type: "string"
+          description: "Category of management data to collect"
+      required: ["mgtDataCategory"]
+    - type: "object"
+      properties:
+        mgtDataName:
+          type: "array"
+          items:
+            type: "string"
+          description: "List of specific measurement/KPI names"
+      required: ["mgtDataName"]
+
+# -----------------------------------------------------------------------------
+# DataSelector (R1TD Section 5.2.2.3.1.1)
+# -----------------------------------------------------------------------------
+data_selector:
+  type: "object"
+  description: "Data selector per R1TD v04.01 Table 5.2.2.3.1.1-1"
+  properties:
+    managementData:
+      $ref: "#/management_data"
+      description: "Selects the data attributes to be included"
+  required: ["managementData"]
+
+# -----------------------------------------------------------------------------
+# Timing (R1TD Section 5.2.2.3.1.3)
+# -----------------------------------------------------------------------------
+timing:
+  type: "object"
+  description: "Timing parameters per R1TD v04.01 Table 5.2.2.3.1.3-1"
+  properties:
+    collectionWindow:
+      $ref: "#/collection_window"
+      description: "Time window for data collection"
+    granularityPeriod:
+      $ref: "#/granularity_period"
+      description: "Granularity period per 3GPP TS 32.401"
+    reportingPeriod:
+      $ref: "#/reporting_period"
+      description: "Reporting period (required for file-based delivery, absent for streaming)"
+  required: ["collectionWindow", "granularityPeriod"]
+
+# -----------------------------------------------------------------------------
+# Data Production Schema (R1TD Section 5.1.4.2)
+# Used in dataJobDefinition for data jobs
+# -----------------------------------------------------------------------------
+data_production_schema:
+  type: "object"
+  description: "Data production schema per R1TD v04.01 Table 5.1.4.2-1"
+  properties:
+    dataSelector:
+      $ref: "#/data_selector"
+      description: "Selects data to be included in produced data instance"
+    targetSelector:
+      $ref: "#/target_selector"
+      description: "Selects geographic area or entities for data production"
+    timing:
+      $ref: "#/timing"
+      description: "Time-related parameters for data production"
+  required: ["dataSelector", "targetSelector"]
+
+# =============================================================================
+# STANDARD DME TYPES (R1TD v04.01 Section 5.2)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# DME Type: ORAN:RanOamPmData:1.0.0 (R1TD Section 5.2.2)
+# -----------------------------------------------------------------------------
+dme_type_ran_oam_pm_data:
+  dmeTypeId:
+    namespace: "ORAN"
+    name: "RanOamPmData"
+    version: "1.0.0"
+  dataCategory: "PERFORMANCE_MANAGEMENT_DATA"
+  description: |
+    RAN OAM Performance Management Data per R1TD v04.01 Section 5.2.2.
+    Includes 3GPP and O-RAN defined performance measurements and KPIs.
+    References: 3GPP TS 28.622 ManagementData, O1 specs for O-CU-UP/CP and O-DU.
+  dataProductionSchema:
+    $ref: "#/data_production_schema"
+  dataDeliverySchemas:
+    - schemaId: "RanOamPmData-JSON-v1"
+      schemaFormat: "JSON"
+      description: "JSON delivery schema for PM data"
+    - schemaId: "RanOamPmData-XML-v1"
+      schemaFormat: "XML"
+      description: "XML delivery schema for PM data (3GPP format)"
+
+# -----------------------------------------------------------------------------
+# DME Type: ORAN:RanOamTraceMetrics:1.0.0 (R1TD Section 5.2.3)
+# -----------------------------------------------------------------------------
+dme_type_ran_oam_trace_metrics:
+  dmeTypeId:
+    namespace: "ORAN"
+    name: "RanOamTraceMetrics"
+    version: "1.0.0"
+  dataCategory: "TRACE_DATA"
+  description: |
+    RAN OAM Trace Metrics per R1TD v04.01 Section 5.2.3.
+    Based on 3GPP TS 32.422 (Trace control) and TS 32.423 (Trace data).
+    Note: Does not include metrics defined in 3GPP TS 32.422 for managementData.
+  dataProductionSchema:
+    $ref: "#/data_production_schema"
+  dataDeliverySchemas:
+    - schemaId: "RanOamTraceMetrics-3GPP-v1"
+      schemaFormat: "XML"
+      description: "Trace record schema per 3GPP TS 32.423 clause 5.2"
+
+# =============================================================================
+# END R1TD v04.01 DEFINITIONS
+# =============================================================================
 
 # CAPIF Service Registration Schema (3GPP TS 29.222)
 service_registration:

@@ -16,10 +16,14 @@
 # =========================================================================
 
 metadata:
-  version: "1.0.0"
+  version: "2.1.0"
   description: "O-RAN R1 API Dependency Graph for multi-step workflow generation"
   last_updated: "2024-01-15"
-  o_ran_spec_version: "R004-v12.00"
+  o_ran_spec_references:
+    - spec_id: "R1AP-R004-v08.00"
+      description: "R1 API Protocols - defines API endpoints and operations"
+    - spec_id: "R1TD-R004-v04.01"
+      description: "R1 Type Definitions - defines DME type schemas and data structures"
 
 # ============================================================
 # DATA ENTITIES - Shared data objects produced/consumed by APIs
@@ -44,11 +48,91 @@ data_entities:
     produced_by: ["service_registration.POST_service_apis"]
     consumed_by: ["service_discovery.GET_allServiceAPIs"]
 
-  # Data Management (R1AP-compliant naming)
+  # Data Management (R1AP v08.00 + R1TD v04.01 compliant naming)
   dmeTypeId:
     type: "string"
-    description: "DME type identifier (format: <namespace>:<name>:<version>)"
-    produced_by: ["data_discovery.GET_dme_types", "data_producer.POST_registrations"]
+    description: |
+      DME Type Identifier per R1TD v04.01 Section 5.1.2.1.
+      String format: "NAMESPACE:Name:Version" (e.g., "ORAN:RanOamPmData:1.0.0")
+      Standard types: ORAN:RanOamPmData:1.0.0, ORAN:RanOamTraceMetrics:1.0.0
+    format: "NAMESPACE:Name:Version"
+    examples:
+      - "ORAN:RanOamPmData:1.0.0"
+      - "ORAN:RanOamTraceMetrics:1.0.0"
+      - "3GPP:PmData:1.0.0"
+    produced_by: ["data_discovery.GET_dme_types", "data_registration.POST_producer_registrations"]
+    consumed_by: ["data_access.POST_data_jobs"]
+
+  # R1TD v04.01 Data Production Schema Components (Section 5.1.4.2)
+  dataSelector:
+    type: "object"
+    description: |
+      R1TD v04.01 DataSelector (Table 5.2.2.3.1.1-1).
+      Contains ManagementData with either mgtDataCategory OR mgtDataName array.
+    spec_reference: "R1TD Section 5.2.2.3.1.1"
+    structure:
+      managementData:
+        mgtDataCategory: "string (e.g., PERFORMANCE_MANAGEMENT_DATA, TRACE_DATA)"
+        mgtDataName: "array of measurement names (e.g., RRU.PrbUsedDl)"
+    produced_by: []
+    consumed_by: ["data_access.POST_data_jobs"]
+
+  targetSelector:
+    type: "object"
+    description: |
+      R1TD v04.01 TargetSelector (Table 5.2.2.3.1.2-1).
+      Contains either nodeFilter OR objectInstances (DnList).
+    spec_reference: "R1TD Section 5.2.2.3.1.2"
+    structure:
+      nodeFilter:
+        areaOfInterest: "string"
+        networkDomain: "string"
+        cPuPType: "string"
+        sst: "integer (0-255)"
+      objectInstances: "array of Distinguished Names per 3GPP TS 32.300"
+    produced_by: []
+    consumed_by: ["data_access.POST_data_jobs"]
+
+  timing:
+    type: "object"
+    description: |
+      R1TD v04.01 Timing (Table 5.2.2.3.1.3-1).
+      Contains CollectionWindow, GranularityPeriod, ReportingPeriod.
+    spec_reference: "R1TD Section 5.2.2.3.1.3"
+    structure:
+      collectionWindow:
+        startTime: "RFC 3339 TimeOfDay (HH:MM:SS)"
+        stopTime: "RFC 3339 TimeOfDay (HH:MM:SS)"
+      granularityPeriod: "integer (seconds)"
+      reportingPeriod: "integer (seconds)"
+    produced_by: []
+    consumed_by: ["data_access.POST_data_jobs"]
+
+  # R1TD v04.01 Supporting Types
+  distinguishedName:
+    type: "string"
+    description: |
+      Distinguished Name (DN) per 3GPP TS 32.300.
+      Format: /ManagedElement=<id>/GNBDUFunction=<id>/NRCellDU=<cellId>
+    spec_reference: "3GPP TS 32.300"
+    examples:
+      - "/ManagedElement=gNB-001/GNBDUFunction=1/NRCellDU=NRCell-100"
+      - "/ManagedElement=gNB-002/GNBCUCPFunction=1"
+    produced_by: ["network_information.GET_managedElements"]
+    consumed_by: ["data_access.POST_data_jobs", "performance_management.POST_pm_jobs"]
+
+  nrCellGlobalId:
+    type: "object"
+    description: |
+      NR Cell Global Identity (NRCGI) per R1TD v04.01.
+      Uniquely identifies an NR cell globally.
+    spec_reference: "R1TD Section 5.1.5"
+    structure:
+      plmnIdentity:
+        mcc: "string (3 digits)"
+        mnc: "string (2-3 digits)"
+      nrCellIdentity: "string (36-bit identifier)"
+    produced_by: ["network_information.GET_managedElements"]
     consumed_by: ["data_access.POST_data_jobs"]
 
   dataJobId:
@@ -177,58 +261,71 @@ api_nodes:
         requires: []
         idempotent: true
 
+  # R1AP v08.00 Service Registration (Section 6.1)
+  # API Version: 1.2.0
   service_registration:
     category: "service_management"
-    spec_section: "5.1"
+    spec_section: "6.1"
+    api_version: "1.2.0"
     operations:
       POST_service_apis:
-        uri: "/capif-publish/v1/{apfId}/service-apis"
+        uri: "/published-apis/v1/{apfId}/service-apis"
         method: "POST"
-        description: "Register a new API service"
+        description: "Register a new API service per R1AP v08.00 Section 6.1.4.1"
         produces: ["serviceApiId", "apfId"]
         requires: []
         idempotent: false
 
       GET_service_apis:
-        uri: "/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+        uri: "/published-apis/v1/{apfId}/service-apis/{serviceApiId}"
         method: "GET"
-        description: "Get API service details"
+        description: "Get API service details per R1AP v08.00 Section 6.1.4.2"
         produces: []
         requires: ["apfId", "serviceApiId"]
         idempotent: true
 
       PUT_service_apis:
-        uri: "/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+        uri: "/published-apis/v1/{apfId}/service-apis/{serviceApiId}"
         method: "PUT"
-        description: "Update API service"
+        description: "Update API service per R1AP v08.00 Section 6.1.4.3"
         produces: []
         requires: ["apfId", "serviceApiId"]
         idempotent: true
 
       DELETE_service_apis:
-        uri: "/capif-publish/v1/{apfId}/service-apis/{serviceApiId}"
+        uri: "/published-apis/v1/{apfId}/service-apis/{serviceApiId}"
         method: "DELETE"
-        description: "Delete API service registration"
+        description: "Delete API service registration per R1AP v08.00 Section 6.1.4.4"
         produces: []
         requires: ["apfId", "serviceApiId"]
         idempotent: true
 
+  # R1AP v08.00 Service Discovery (Section 6.2)
+  # API Version: 1.2.0
   service_discovery:
     category: "service_management"
-    spec_section: "5.1"
+    spec_section: "6.2"
+    api_version: "1.2.0"
     operations:
       GET_allServiceAPIs:
-        uri: "/capif-discover/v1/allServiceAPIs"
+        uri: "/service-apis/v1/allServiceAPIs"
         method: "GET"
-        description: "Discover all available service APIs"
+        description: "Discover all available service APIs per R1AP v08.00 Section 6.2.4.1"
         produces: ["serviceApiId", "aefProfiles"]
         requires: []
         idempotent: true
 
+  # R1AP v08.00 Service Events (Section 6.3)
+  # API Version: 1.2.0
+  service_events:
+    category: "service_management"
+    spec_section: "6.3"
+    api_version: "1.2.0"
+    operations:
       POST_service_subscriptions:
         uri: "/capif-events/v1/{subscriberId}/subscriptions"
         method: "POST"
-        description: "Subscribe to service availability events"
+        description: "Subscribe to service availability events per R1AP v08.00 Section 6.3.4.1"
         produces: ["subscriptionId"]
         requires: []
         idempotent: false
@@ -236,59 +333,65 @@ api_nodes:
       DELETE_service_subscriptions:
         uri: "/capif-events/v1/{subscriberId}/subscriptions/{subscriptionId}"
         method: "DELETE"
-        description: "Unsubscribe from service availability events"
+        description: "Unsubscribe from service availability events per R1AP v08.00 Section 6.3.4.2"
         produces: []
         requires: ["subscriptionId"]
         idempotent: true
 
   # -----------------------------------------------------------
-  # SECTION 5.2: Data Management
+  # SECTION 7: Data Management (R1AP v08.00)
   # -----------------------------------------------------------
+
+  # R1AP v08.00 Data Registration (Section 7.1)
+  # API Version: 2.0.0-alpha.2
   data_registration:
     category: "data_management"
-    spec_section: "5.2"
+    spec_section: "7.1"
+    api_version: "2.0.0-alpha.2"
     operations:
       POST_producer_registrations:
-        uri: "/r1-data-management/v1/data-producer-registrations"
+        uri: "/data-registration/v2/production-capabilities"
         method: "POST"
-        description: "Register as data producer for DME type"
-        produces: ["registrationId", "infoTypeId"]
+        description: "Register DME type production capability per R1AP v08.00 Section 7.1.4.1"
+        produces: ["registrationId", "dmeTypeId"]
         requires: []
         idempotent: false
 
       GET_producer_registrations:
-        uri: "/r1-data-management/v1/data-producer-registrations/{registrationId}"
+        uri: "/data-registration/v2/production-capabilities/{registrationId}"
         method: "GET"
-        description: "Query data producer registration"
+        description: "Query data producer registration per R1AP v08.00 Section 7.1.4.2"
         produces: []
         requires: ["registrationId"]
         idempotent: true
 
       PUT_producer_registrations:
-        uri: "/r1-data-management/v1/data-producer-registrations/{registrationId}"
+        uri: "/data-registration/v2/production-capabilities/{registrationId}"
         method: "PUT"
-        description: "Update data producer registration"
+        description: "Update data producer registration per R1AP v08.00 Section 7.1.4.3"
         produces: []
         requires: ["registrationId"]
         idempotent: true
 
       DELETE_producer_registrations:
-        uri: "/r1-data-management/v1/data-producer-registrations/{registrationId}"
+        uri: "/data-registration/v2/production-capabilities/{registrationId}"
         method: "DELETE"
-        description: "Deregister data producer"
+        description: "Deregister data producer per R1AP v08.00 Section 7.1.4.4"
         produces: []
         requires: ["registrationId"]
         idempotent: true
 
-  # R1AP-compliant Data Discovery (Section 5.2)
+  # R1AP v08.00 Data Discovery (Section 7.2)
+  # API Version: 2.0.0
   data_discovery:
     category: "data_management"
-    spec_section: "5.2"
+    spec_section: "7.2"
+    api_version: "2.0.0"
     operations:
       GET_dme_types:
         uri: "/data-discovery/v2/dme-types"
         method: "GET"
-        description: "Discover available DME types"
+        description: "Discover available DME types per R1AP v08.00 Section 7.2.4.1"
         produces: ["dmeTypeId", "dmeTypeSchema", "dataAccessEndpoint"]
         requires: []
         idempotent: true
@@ -296,83 +399,134 @@ api_nodes:
       GET_dme_type_details:
         uri: "/data-discovery/v2/dme-types/{dmeTypeId}"
         method: "GET"
-        description: "Get DME type details"
+        description: "Get DME type details per R1AP v08.00 Section 7.2.4.2"
         produces: ["dmeTypeSchema", "dataDeliveryModes"]
         requires: ["dmeTypeId"]
         idempotent: true
 
-  # R1AP-compliant Data Access (Section 5.2)
+  # R1AP v08.00 compliant Data Access (Section 7.3)
+  # API Version: 2.0.0-alpha.2
   data_access:
     category: "data_management"
-    spec_section: "5.2"
+    spec_section: "7.3"
+    api_version: "2.0.0-alpha.2"
     operations:
       POST_data_jobs:
-        uri: "/data-access/v1/data-jobs"
+        uri: "/data-access/v2/data-jobs"
         method: "POST"
-        description: "Create data job (CONTINUOUS or ONE_TIME)"
+        description: "Create data job (CONTINUOUS or ONE_TIME) per R1AP v08.00 Section 7.3.4.1"
         produces: ["dataJobId"]
         requires: ["dmeTypeId"]
         consumes_kpis: true
         idempotent: false
 
       GET_data_jobs:
-        uri: "/data-access/v1/data-jobs/{dataJobId}"
+        uri: "/data-access/v2/data-jobs/{dataJobId}"
         method: "GET"
-        description: "Get data job details"
+        description: "Get data job details per R1AP v08.00 Section 7.3.4.2"
         produces: []
         requires: ["dataJobId"]
         idempotent: true
 
       PUT_data_jobs:
-        uri: "/data-access/v1/data-jobs/{dataJobId}"
+        uri: "/data-access/v2/data-jobs/{dataJobId}"
         method: "PUT"
-        description: "Update data job parameters"
+        description: "Update data job parameters per R1AP v08.00 Section 7.3.4.3"
         produces: []
         requires: ["dataJobId"]
         idempotent: true
 
       DELETE_data_jobs:
-        uri: "/data-access/v1/data-jobs/{dataJobId}"
+        uri: "/data-access/v2/data-jobs/{dataJobId}"
         method: "DELETE"
-        description: "Delete data job"
+        description: "Delete data job per R1AP v08.00 Section 7.3.4.4"
         produces: []
         requires: ["dataJobId"]
         idempotent: true
 
-      GET_data_job_status:
-        uri: "/data-access/v1/data-jobs/{dataJobId}/status"
+      LIST_data_jobs:
+        uri: "/data-access/v2/data-jobs"
         method: "GET"
-        description: "Query data job status"
-        produces: ["jobStatus"]
-        requires: ["dataJobId"]
+        description: "Query all data jobs per R1AP v08.00 Section 7.3.4.5"
+        produces: ["dataJobId"]
+        requires: []
         idempotent: true
 
+  # R1AP v08.00 compliant Data Offer (Section 7.4)
+  # API Version: 1.0.0
   data_offer:
     category: "data_management"
-    spec_section: "5.2"
+    spec_section: "7.4"
+    api_version: "1.0.0"
     operations:
       POST_data_offers:
-        uri: "/r1-data-management/v1/data-offers"
+        uri: "/data-offer/v1/offers"
         method: "POST"
-        description: "Create data offer"
+        description: "Create data offer per R1AP v08.00 Section 7.4.4.1"
         produces: ["offerId"]
-        requires: ["infoTypeId"]
+        requires: ["dmeTypeId"]
         idempotent: false
 
       GET_data_offers:
-        uri: "/r1-data-management/v1/data-offers/{offerId}"
+        uri: "/data-offer/v1/offers/{offerId}"
         method: "GET"
-        description: "Get data offer details"
+        description: "Get data offer details per R1AP v08.00 Section 7.4.4.2"
         produces: []
         requires: ["offerId"]
         idempotent: true
 
+      LIST_data_offers:
+        uri: "/data-offer/v1/offers"
+        method: "GET"
+        description: "Query all data offers per R1AP v08.00 Section 7.4.4.3"
+        produces: ["offerId"]
+        requires: []
+        idempotent: true
+
       DELETE_data_offers:
-        uri: "/r1-data-management/v1/data-offers/{offerId}"
+        uri: "/data-offer/v1/offers/{offerId}"
         method: "DELETE"
-        description: "Terminate data offer"
+        description: "Withdraw data offer per R1AP v08.00 Section 7.4.4.4"
         produces: []
         requires: ["offerId"]
+        idempotent: true
+
+  # R1AP v08.00 HTTP Push Data (Section 7.5)
+  # API Version: 1.0.0
+  http_push_data:
+    category: "data_management"
+    spec_section: "7.5"
+    api_version: "1.0.0"
+    operations:
+      POST_push_data:
+        uri: "{consumerCallbackUri}"
+        method: "POST"
+        description: "Push data to consumer callback URI per R1AP v08.00 Section 7.5.4.1"
+        produces: []
+        requires: ["dataJobId"]
+        idempotent: false
+
+      POST_data_availability_notification:
+        uri: "{dataAvailabilityNotificationUri}"
+        method: "POST"
+        description: "Notify consumer that data is available per R1AP v08.00 Section 7.5.4.2"
+        produces: []
+        requires: ["dataJobId"]
+        idempotent: false
+
+  # R1AP v08.00 HTTP Pull Data (Section 7.6)
+  # API Version: 1.0.0
+  http_pull_data:
+    category: "data_management"
+    spec_section: "7.6"
+    api_version: "1.0.0"
+    operations:
+      GET_pull_data:
+        uri: "{dataPullUri}"
+        method: "GET"
+        description: "Pull data from producer URI per R1AP v08.00 Section 7.6.4.1"
+        produces: []
+        requires: ["dataJobId"]
         idempotent: true
 
   # -----------------------------------------------------------
@@ -935,6 +1089,84 @@ api_nodes:
 # ============================================================
 relationships:
   # -----------------------------------------------------------
+  # Bootstrap Requirements - ALL workflows start here
+  # -----------------------------------------------------------
+  # IMPORTANT: Agent starts knowing ONLY:
+  #   api_root = "https://smo.example.com"
+  #   bootstrap_path = "/bootstrap/v1/bootstrap-info"
+  # Everything else must be discovered via bootstrap first.
+
+  - from: "bootstrap.GET_bootstrap_info"
+    to: "data_discovery.GET_dme_types"
+    type: "ENABLES"
+    data_flow: "serviceEndpoints.dataDiscovery"
+    description: "Bootstrap provides dataDiscovery endpoint path"
+    mandatory: true
+
+  - from: "bootstrap.GET_bootstrap_info"
+    to: "data_access.POST_data_jobs"
+    type: "ENABLES"
+    data_flow: "serviceEndpoints.dataAccess"
+    description: "Bootstrap provides dataAccess endpoint path"
+    mandatory: true
+
+  - from: "bootstrap.GET_bootstrap_info"
+    to: "a1_policy_management.GET_rics"
+    type: "ENABLES"
+    data_flow: "serviceEndpoints.a1PolicyManagement"
+    description: "Bootstrap provides a1PolicyManagement endpoint path"
+    mandatory: true
+
+  - from: "bootstrap.GET_bootstrap_info"
+    to: "a1_policy_management.GET_policytypes"
+    type: "ENABLES"
+    data_flow: "serviceEndpoints.a1PolicyManagement"
+    description: "Bootstrap provides a1PolicyManagement endpoint path"
+    mandatory: true
+
+  - from: "bootstrap.GET_bootstrap_info"
+    to: "a1_enrichment_information.GET_eitypes"
+    type: "ENABLES"
+    data_flow: "serviceEndpoints.a1EnrichmentInformation"
+    description: "Bootstrap provides a1EnrichmentInformation endpoint path"
+    mandatory: true
+
+  - from: "bootstrap.GET_bootstrap_info"
+    to: "aiml_model_registration.POST_mlModels"
+    type: "ENABLES"
+    data_flow: "serviceEndpoints.aimlModelManagement"
+    description: "Bootstrap provides aimlModelManagement endpoint path"
+    mandatory: true
+
+  - from: "bootstrap.GET_bootstrap_info"
+    to: "aiml_model_discovery.GET_mlModels"
+    type: "ENABLES"
+    data_flow: "serviceEndpoints.aimlModelManagement"
+    description: "Bootstrap provides aimlModelManagement endpoint path"
+    mandatory: true
+
+  - from: "bootstrap.GET_bootstrap_info"
+    to: "rapp_registration.POST_rapps"
+    type: "ENABLES"
+    data_flow: "serviceEndpoints.rappManagement"
+    description: "Bootstrap provides rappManagement endpoint path"
+    mandatory: true
+
+  - from: "bootstrap.GET_bootstrap_info"
+    to: "service_registration.POST_service_apis"
+    type: "ENABLES"
+    data_flow: "serviceEndpoints.capifPublish"
+    description: "Bootstrap provides capifPublish endpoint path"
+    mandatory: true
+
+  - from: "bootstrap.GET_bootstrap_info"
+    to: "service_discovery.GET_allServiceAPIs"
+    type: "ENABLES"
+    data_flow: "serviceEndpoints.capifDiscover"
+    description: "Bootstrap provides capifDiscover endpoint path"
+    mandatory: true
+
+  # -----------------------------------------------------------
   # Data Management Flow (R1AP-compliant)
   # -----------------------------------------------------------
   - from: "data_discovery.GET_dme_types"
@@ -1154,6 +1386,17 @@ relationships:
 # CONSTRAINTS - Validation rules for workflows
 # ============================================================
 constraints:
+  # -----------------------------------------------------------
+  # Bootstrap Constraint - ALL workflows must start with bootstrap
+  # -----------------------------------------------------------
+  - name: "bootstrap_required"
+    type: "prerequisite"
+    rule: |
+      ALL workflows MUST start with "bootstrap.GET_bootstrap_info"
+      BEFORE any other API call
+    error_message: "Workflow must start with bootstrap - agent only knows api_root and bootstrap_path at startup"
+    severity: "error"
+
   - name: "policy_requires_ric"
     type: "prerequisite"
     rule: |
@@ -1237,6 +1480,11 @@ constraints:
 # ============================================================
 # WORKFLOW PATTERNS - Common valid sequences
 # ============================================================
+# IMPORTANT: All patterns now start with bootstrap.
+# Agent starts knowing ONLY:
+#   api_root = "https://smo.example.com"
+#   bootstrap_path = "/bootstrap/v1/bootstrap-info"
+
 workflow_patterns:
   # -----------------------------------------------------------
   # Data Acquisition Patterns
@@ -1251,12 +1499,17 @@ workflow_patterns:
       - "stream.*metrics"
     sequence:
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
+      - step: 2
         api: "data_discovery.GET_dme_types"
         purpose: "Discover available DME types"
-      - step: 2
+        uses_from_previous: ["serviceEndpoints.dataDiscovery"]
+      - step: 3
         api: "data_access.POST_data_jobs"
         purpose: "Create data job for continuous streaming"
-        uses_from_previous: ["dmeTypeId"]
+        uses_from_previous: ["serviceEndpoints.dataAccess", "dmeTypeId"]
     outputs: ["dataJobId"]
 
   # -----------------------------------------------------------
@@ -1272,19 +1525,25 @@ workflow_patterns:
       - "enable.*traffic steering"
     sequence:
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
+      - step: 2
         api: "a1_policy_management.GET_rics"
         purpose: "Get available Near-RT RICs"
-      - step: 2
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement"]
+      - step: 3
         api: "a1_policy_management.GET_policytypes"
         purpose: "Get supported policy types"
-      - step: 3
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement"]
+      - step: 4
         api: "a1_policy_management.POST_policies"
         purpose: "Create the policy"
-        uses_from_previous: ["nearRtRicId", "policyTypeId"]
-      - step: 4
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement", "nearRtRicId", "policyTypeId"]
+      - step: 5
         api: "a1_policy_management.GET_policy_status"
         purpose: "Verify policy deployment status"
-        uses_from_previous: ["policyId"]
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement", "policyId"]
     outputs: ["policyId", "policyStatus"]
 
   policy_update:
@@ -1296,16 +1555,21 @@ workflow_patterns:
       - "change.*thresholds"
     sequence:
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
+      - step: 2
         api: "a1_policy_management.GET_policies"
         purpose: "Get current policy details"
-      - step: 2
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement"]
+      - step: 3
         api: "a1_policy_management.PUT_policies"
         purpose: "Update policy parameters"
-        uses_from_previous: ["policyId"]
-      - step: 3
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement", "policyId"]
+      - step: 4
         api: "a1_policy_management.GET_policy_status"
         purpose: "Verify update took effect"
-        uses_from_previous: ["policyId"]
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement", "policyId"]
 
   policy_lifecycle:
     name: "A1 Policy Full Lifecycle"
@@ -1315,20 +1579,29 @@ workflow_patterns:
       - "temporary policy"
     sequence:
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
+      - step: 2
         api: "a1_policy_management.GET_rics"
         purpose: "Get available RICs"
-      - step: 2
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement"]
+      - step: 3
         api: "a1_policy_management.GET_policytypes"
         purpose: "Get policy types"
-      - step: 3
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement"]
+      - step: 4
         api: "a1_policy_management.POST_policies"
         purpose: "Create policy"
-      - step: 4
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement", "nearRtRicId", "policyTypeId"]
+      - step: 5
         api: "a1_policy_management.GET_policy_status"
         purpose: "Monitor policy effectiveness"
-      - step: 5
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement", "policyId"]
+      - step: 6
         api: "a1_policy_management.DELETE_policies"
         purpose: "Remove policy when done"
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement", "policyId"]
         conditional: true
 
   # -----------------------------------------------------------
@@ -1343,16 +1616,21 @@ workflow_patterns:
       - "upload.*ML model"
     sequence:
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
+      - step: 2
         api: "aiml_model_registration.POST_mlModels"
         purpose: "Register model in catalog"
-      - step: 2
+        uses_from_previous: ["serviceEndpoints.aimlModelManagement"]
+      - step: 3
         api: "aiml_model_storage.POST_artifacts"
         purpose: "Upload model artifact"
-        uses_from_previous: ["modelId"]
-      - step: 3
+        uses_from_previous: ["serviceEndpoints.aimlModelManagement", "modelId"]
+      - step: 4
         api: "aiml_performance_monitoring.POST_subscriptions"
         purpose: "Set up performance monitoring"
-        uses_from_previous: ["modelId"]
+        uses_from_previous: ["serviceEndpoints.aimlModelManagement", "modelId"]
     outputs: ["modelId", "artifactId"]
 
   ml_training_pipeline:
@@ -1364,21 +1642,26 @@ workflow_patterns:
       - "improve.*model"
     sequence:
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
+      - step: 2
         api: "aiml_model_registration.POST_mlModels"
         purpose: "Register model (if new)"
+        uses_from_previous: ["serviceEndpoints.aimlModelManagement"]
         conditional: true
-      - step: 2
+      - step: 3
         api: "aiml_model_training.POST_training_jobs"
         purpose: "Start training job"
-        uses_from_previous: ["modelId"]
-      - step: 3
+        uses_from_previous: ["serviceEndpoints.aimlModelManagement", "modelId"]
+      - step: 4
         api: "aiml_model_training.GET_training_jobs"
         purpose: "Monitor training progress"
-        uses_from_previous: ["trainingJobId"]
-      - step: 4
+        uses_from_previous: ["serviceEndpoints.aimlModelManagement", "trainingJobId"]
+      - step: 5
         api: "aiml_model_storage.POST_artifacts"
         purpose: "Store trained model"
-        uses_from_previous: ["modelId"]
+        uses_from_previous: ["serviceEndpoints.aimlModelManagement", "modelId"]
 
   ml_inference:
     name: "ML Model Inference"
@@ -1389,16 +1672,21 @@ workflow_patterns:
       - "run.*model"
     sequence:
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
+      - step: 2
         api: "aiml_model_discovery.GET_mlModels"
         purpose: "Find available models"
-      - step: 2
+        uses_from_previous: ["serviceEndpoints.aimlModelManagement"]
+      - step: 3
         api: "aiml_model_inference.POST_inference_jobs"
         purpose: "Request inference"
-        uses_from_previous: ["modelId"]
-      - step: 3
+        uses_from_previous: ["serviceEndpoints.aimlModelManagement", "modelId"]
+      - step: 4
         api: "aiml_model_inference.GET_inference_jobs"
         purpose: "Get prediction result"
-        uses_from_previous: ["inferenceJobId"]
+        uses_from_previous: ["serviceEndpoints.aimlModelManagement", "inferenceJobId"]
         conditional: true
 
   # -----------------------------------------------------------
@@ -1414,16 +1702,22 @@ workflow_patterns:
       - "coverage hole"
     sequence:
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
+      - step: 2
         api: "data_discovery.GET_dme_types"
         purpose: "Find coverage KPI DME types"
-      - step: 2
+        uses_from_previous: ["serviceEndpoints.dataDiscovery"]
+      - step: 3
         api: "data_access.POST_data_jobs"
         purpose: "Create data job for coverage KPIs"
+        uses_from_previous: ["serviceEndpoints.dataAccess", "dmeTypeId"]
         kpis: ["rsrp_dbm", "rsrq_db", "sinr_db"]
-      - step: 3
+      - step: 4
         api: "network_information.GET_managedElements"
         purpose: "Get cell configuration"
-      - step: 4
+      - step: 5
         api: "fault_management.GET_alarms"
         purpose: "Check for related alarms"
     diagnostic_type: "coverage"
@@ -1438,21 +1732,29 @@ workflow_patterns:
       - "throughput.*low"
     sequence:
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
+      - step: 2
         api: "data_discovery.GET_dme_types"
         purpose: "Find capacity KPI DME types"
-      - step: 2
+        uses_from_previous: ["serviceEndpoints.dataDiscovery"]
+      - step: 3
         api: "data_access.POST_data_jobs"
         purpose: "Create data job for capacity KPIs"
+        uses_from_previous: ["serviceEndpoints.dataAccess", "dmeTypeId"]
         kpis: ["prb_utilization_dl_pct", "active_ues", "throughput_dl_mbps"]
-      - step: 3
+      - step: 4
         api: "network_information.GET_managedElements"
         purpose: "Get neighbor cell info"
-      - step: 4
+      - step: 5
         api: "a1_policy_management.GET_rics"
         purpose: "Prepare for load balancing"
-      - step: 5
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement"]
+      - step: 6
         api: "a1_policy_management.GET_policytypes"
         purpose: "Find load balancing policy type"
+        uses_from_previous: ["serviceEndpoints.a1PolicyManagement"]
     diagnostic_type: "capacity"
     leads_to: "policy_deployment"
 
@@ -1465,16 +1767,20 @@ workflow_patterns:
       - "resolve.*issue"
     sequence:
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
+      - step: 2
         api: "fault_management.GET_alarms"
         purpose: "Get active alarms"
-      - step: 2
+      - step: 3
         api: "fault_management.GET_alarm_details"
         purpose: "Analyze alarm cause"
         uses_from_previous: ["alarmId"]
-      - step: 3
+      - step: 4
         api: "network_information.GET_cell_details"
         purpose: "Get affected resource details"
-      - step: 4
+      - step: 5
         api: "fault_management.PATCH_alarm_ack"
         purpose: "Acknowledge alarm being worked"
         uses_from_previous: ["alarmId"]
@@ -1492,18 +1798,20 @@ workflow_patterns:
     sequence:
       - step: 1
         api: "bootstrap.GET_bootstrap_info"
-        purpose: "Get SMO endpoints"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
       - step: 2
         api: "rapp_registration.POST_rapps"
         purpose: "Register rApp"
+        uses_from_previous: ["serviceEndpoints.rappManagement"]
       - step: 3
         api: "service_registration.POST_service_apis"
         purpose: "Publish rApp APIs"
-        uses_from_previous: ["rAppId"]
+        uses_from_previous: ["serviceEndpoints.capifPublish", "rAppId"]
       - step: 4
         api: "rapp_registration.GET_rapp_status"
         purpose: "Verify registration"
-        uses_from_previous: ["rAppId"]
+        uses_from_previous: ["serviceEndpoints.rappManagement", "rAppId"]
 
   # -----------------------------------------------------------
   # Monitoring Patterns
@@ -1517,14 +1825,20 @@ workflow_patterns:
       - "setup.*monitoring"
     sequence:
       - step: 1
+        api: "bootstrap.GET_bootstrap_info"
+        purpose: "Discover service endpoints"
+        outputs: ["serviceEndpoints"]
+      - step: 2
         api: "data_discovery.GET_dme_types"
         purpose: "Discover available DME types"
-      - step: 2
+        uses_from_previous: ["serviceEndpoints.dataDiscovery"]
+      - step: 3
         api: "data_access.POST_data_jobs"
         purpose: "Create data job for KPIs"
-      - step: 3
+        uses_from_previous: ["serviceEndpoints.dataAccess", "dmeTypeId"]
+      - step: 4
         api: "fault_management.POST_alarm_subscriptions"
         purpose: "Subscribe to alarms"
-      - step: 4
+      - step: 5
         api: "performance_management.POST_pm_jobs"
         purpose: "Create PM job for detailed metrics"
